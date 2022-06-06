@@ -1,0 +1,3 @@
+is_global = true
+build_property.RootNamespace = AlertService
+build_property.ProjectDir = /home/hung/source/repos/stock-alert/alert-service/

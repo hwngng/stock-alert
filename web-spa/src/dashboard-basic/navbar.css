@@ -1,0 +1,49 @@
+@font-face {
+	font-family: 'GepesteVariable';
+	src: local('GepesteVariable'), url(./fonts/GepesteV.woff) format('woff');
+	/* other formats include: 'woff2', 'truetype, 'opentype',
+							  'embedded-opentype', and 'svg' */
+}
+
+.navbar,
+.navbar a {
+	width: auto;
+	overflow: auto;
+}
+
+.navbar-brand img {
+	width: 48px;
+	height: 48px;
+}
+
+.navbar {
+	height: max-content;
+}
+
+.navbar-toolbar .dropdown-menu {
+	-webkit-transform-origin: 100% 0;
+	transform-origin: 100% 0;
+	-webkit-animation-duration: .3s;
+	animation-duration: .3s;
+}
+
+.nav-header .nav-item:hover {
+	background-color: rgba(0, 0, 0, 0.1);
+	border-radius: 5px;
+}
+
+.nav-header .nav-item {
+	margin-right: 10px;
+}
+
+.nav-header .navbar-nav {
+	font-size: 1.2rem;
+}
+
+.nav-header .navbar-nav .active {
+	color: rgb(68, 68, 68) !important;
+}
+
+.nav-header .navbar-nav .nav-link {
+	color: rgb(68, 68, 68) !important;
+}
