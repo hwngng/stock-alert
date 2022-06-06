@@ -91,7 +91,10 @@ namespace CoreIdentity.API.Identity.Controllers
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
-			var user = new ApplicationUser { UserName = model.UserName, Email = model.Email, EmailConfirmed = true };
+			var user = new ApplicationUser { UserName = model.UserName, Email = model.Email };
+			if (!_configuration.GetSection("EmailFeature").Get<bool>())
+				user.EmailConfirmed = true;
+
 			var result = await _userManager.CreateAsync(user, model.Password).ConfigureAwait(false);
 
 			if (result.Succeeded)
@@ -118,7 +121,15 @@ namespace CoreIdentity.API.Identity.Controllers
 		[Route("token")]
 		public async Task<IActionResult> CreateToken([FromBody] LoginViewModel model)
 		{
-			var user = await _userManager.FindByNameAsync(model.UserName).ConfigureAwait(false);
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
+
+			ApplicationUser user = null;
+			if (!string.IsNullOrEmpty(model.UserName))
+				user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+			else if (!string.IsNullOrEmpty(model.UserName))
+				user = await _userManager.FindByNameAsync(model.UserName).ConfigureAwait(false);
+
 			if (user == null)
 				return BadRequest(new string[] { "Invalid credentials." });
 
@@ -214,14 +225,19 @@ namespace CoreIdentity.API.Identity.Controllers
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
-			var user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+			ApplicationUser user = null;
+			if (!string.IsNullOrEmpty(model.Email))
+				user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+			else if (!string.IsNullOrEmpty(model.UserName))
+				user = await _userManager.FindByNameAsync(model.UserName).ConfigureAwait(false);
+
 			if (user == null || !(await _userManager.IsEmailConfirmedAsync(user).ConfigureAwait(false)))
-				return BadRequest(new string[] { "Please verify your email address." });
+				return BadRequest();
 
 			var code = await _userManager.GeneratePasswordResetTokenAsync(user).ConfigureAwait(false);
 			var callbackUrl = $"{_client.Url}{_client.ResetPasswordPath}?uid={user.Id}&code={System.Net.WebUtility.UrlEncode(code)}";
 
-			await _emailService.SendPasswordResetAsync(model.Email, callbackUrl).ConfigureAwait(false);
+			await _emailService.SendPasswordResetAsync(user.Email, callbackUrl).ConfigureAwait(false);
 
 			return Ok();
 		}
@@ -241,12 +257,28 @@ namespace CoreIdentity.API.Identity.Controllers
 				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
 			var user = await _userManager.FindByIdAsync(model.UserId).ConfigureAwait(false);
+
+			if (!_configuration.GetSection("EmailFeature").Get<bool>())
+			{
+				if (!string.IsNullOrEmpty(model.Email))
+					user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+				else if (!string.IsNullOrEmpty(model.UserName))
+					user = await _userManager.FindByNameAsync(model.UserName).ConfigureAwait(false);
+			}
+
 			if (user == null)
 			{
 				// Don't reveal that the user does not exist
 				return BadRequest(new string[] { "Invalid credentials." });
 			}
 			var result = await _userManager.ResetPasswordAsync(user, model.Code, model.Password).ConfigureAwait(false);
+
+			if (!_configuration.GetSection("EmailFeature").Get<bool>())
+			{
+				await _userManager.RemovePasswordAsync(user);
+				result = await _userManager.AddPasswordAsync(user, model.Password);
+			}
+
 			if (result.Succeeded)
 			{
 				return Ok(result);
@@ -333,7 +365,7 @@ namespace CoreIdentity.API.Identity.Controllers
 		[ProducesResponseType(typeof(TokenModel), 200)]
 		[ProducesResponseType(typeof(IEnumerable<string>), 400)]
 		[Route("refreshToken")]
-		public async Task<IActionResult> RefreshToken([FromBody]RefreshTokenViewModel refreshModel)
+		public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenViewModel refreshModel)
 		{
 			string accessToken = refreshModel.AccessToken;
 			string refreshToken = refreshModel.RefreshToken;
@@ -366,39 +398,39 @@ namespace CoreIdentity.API.Identity.Controllers
 			});
 		}
 
-        [Authorize]
-        [HttpGet]
-        [Route("revoke")]
-        public async Task<IActionResult> Revoke(string username)
-        {
+		[Authorize]
+		[HttpGet]
+		[Route("revoke")]
+		public async Task<IActionResult> Revoke(string username)
+		{
 			var sessionContext = SessionContext.ResolveContext(HttpContext);
 			if (username != sessionContext.UserName)
 				return Unauthorized();
-            var user = await _userManager.FindByNameAsync(username);
-            if (user == null) return BadRequest("Invalid user name");
+			var user = await _userManager.FindByNameAsync(username);
+			if (user == null) return BadRequest("Invalid user name");
 
-            user.RefreshToken = null;
-            user.RefreshTokenExpiryTime = null;
-            await _userManager.UpdateAsync(user);
+			user.RefreshToken = null;
+			user.RefreshTokenExpiryTime = null;
+			await _userManager.UpdateAsync(user);
 
-            return Ok();
-        }
+			return Ok();
+		}
 
-        [Authorize]
-        [HttpGet]
-        [Route("revokeAll")]
-        public async Task<IActionResult> RevokeAll()
-        {
-            var users = _userManager.Users.ToList();
-            foreach (var user in users)
-            {
-                user.RefreshToken = null;
-                user.RefreshTokenExpiryTime = null;
-                await _userManager.UpdateAsync(user);
-            }
+		[Authorize]
+		[HttpGet]
+		[Route("revokeAll")]
+		public async Task<IActionResult> RevokeAll()
+		{
+			var users = _userManager.Users.ToList();
+			foreach (var user in users)
+			{
+				user.RefreshToken = null;
+				user.RefreshTokenExpiryTime = null;
+				await _userManager.UpdateAsync(user);
+			}
 
-            return Ok();
-        }
+			return Ok();
+		}
 
 		private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
 		{
@@ -417,8 +449,8 @@ namespace CoreIdentity.API.Identity.Controllers
 			};
 
 			var tokenHandler = new JwtSecurityTokenHandler();
-            // resolve Identity.Name, ref: https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/issues/415
-            tokenHandler.InboundClaimTypeMap[JwtRegisteredClaimNames.Sub] = ClaimTypes.Name;
+			// resolve Identity.Name, ref: https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/issues/415
+			tokenHandler.InboundClaimTypeMap[JwtRegisteredClaimNames.Sub] = ClaimTypes.Name;
 			var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
 			if (!(securityToken is JwtSecurityToken jwtSecurityToken)
 				|| !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
