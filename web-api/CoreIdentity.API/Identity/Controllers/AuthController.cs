@@ -160,14 +160,18 @@ namespace CoreIdentity.API.Identity.Controllers
 				else
 				{
 					JwtSecurityToken jwtSecurityToken = await CreateJwtToken(user).ConfigureAwait(false);
-					var refreshToken = GenerateRefreshToken();
-					user.RefreshToken = refreshToken;
-					user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwt.RefreshInDays);
-					await _userManager.UpdateAsync(user);
+
+					if (model.IsRemember)
+					{
+						var refreshToken = GenerateRefreshToken();
+						user.RefreshToken = refreshToken;
+						user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwt.RefreshInDays);
+						await _userManager.UpdateAsync(user);
+						tokenModel.RefreshToken = refreshToken;
+					}
 
 					tokenModel.TFAEnabled = false;
 					tokenModel.Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
-					tokenModel.RefreshToken = refreshToken;
 
 
 					return Ok(tokenModel);
