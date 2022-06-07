@@ -91,7 +91,7 @@ namespace CoreIdentity.API.Identity.Controllers
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
-			var user = new ApplicationUser { UserName = model.UserName, Email = model.Email };
+			var user = new ApplicationUser { UserName = model.UserName, Email = model.Email, FirstName = model.FirstName, LastName = model.LastName };
 			if (!_configuration.GetSection("EmailFeature").Get<bool>())
 				user.EmailConfirmed = true;
 
@@ -125,7 +125,7 @@ namespace CoreIdentity.API.Identity.Controllers
 				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
 			ApplicationUser user = null;
-			if (!string.IsNullOrEmpty(model.UserName))
+			if (!string.IsNullOrEmpty(model.Email))
 				user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
 			else if (!string.IsNullOrEmpty(model.UserName))
 				user = await _userManager.FindByNameAsync(model.UserName).ConfigureAwait(false);
