@@ -1,3 +1,4 @@
 module.exports = {
-	dataServiceApi: 'http://localhost:9876'
+	dataServiceHost: 'http://localhost:9876',
+	webApiHost: 'http://localhost:65049'
 };

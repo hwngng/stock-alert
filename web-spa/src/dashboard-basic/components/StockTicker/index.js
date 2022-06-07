@@ -6,7 +6,7 @@ import { Nav, NavDropdown, InputGroup, FormControl, Button } from 'react-bootstr
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Autosuggest from 'react-autosuggest';
-
+import dataServiceApi from '../../../common/api/dataServiceApi';
 export default class StockTicker extends Component {
 
     constructor(props) {
@@ -30,7 +30,6 @@ export default class StockTicker extends Component {
         this.socket = null;
         this.apiUrl = props.apiUrl;
         this.config = props.config;
-        console.log(this.config);
 
         this.format = {}
         this.format["SFU"] = {};
@@ -321,19 +320,23 @@ export default class StockTicker extends Component {
         let params = {
             all: true
         }
-        axios.get((new URL('stock/info?', this.config['dataServiceApi'])).toString() + (new URLSearchParams(params)).toString())
-            .then(function (response) {
-                stockInfoObj = {};
-                let infoObj = response.data;
-                stockInfoObj['version'] = infoObj['version'];
-                stockInfoObj['infos'] = infoObj['data'];
-                stockTicker.stockInfo = stockInfoObj['infos'];
-                localStorage.setItem('stockInfos', JSON.stringify(stockInfoObj));
-                stockTicker.stockInfos = stockTicker.makeSearchHint(stockInfoObj['infos']);
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
+        axios({
+            method: dataServiceApi.stockInfo.method,
+            url: new URL(dataServiceApi.stockInfo.path, this.config['dataServiceHost']).toString(),
+            params: params
+        })
+        .then(function (response) {
+            stockInfoObj = {};
+            let infoObj = response.data;
+            stockInfoObj['version'] = infoObj['version'];
+            stockInfoObj['infos'] = infoObj['data'];
+            stockTicker.stockInfo = stockInfoObj['infos'];
+            localStorage.setItem('stockInfos', JSON.stringify(stockInfoObj));
+            stockTicker.stockInfos = stockTicker.makeSearchHint(stockInfoObj['infos']);
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
     }
 
     dropNullFields(obj) {
@@ -368,19 +371,23 @@ export default class StockTicker extends Component {
         let stockTicker = this;
         let stdParams = this.dropNullFields(this.filter);
 
-        axios.get((new URL('stock/snapshot?', this.config['dataServiceApi'])).toString() + (new URLSearchParams(stdParams)).toString())
-            .then(function (response) {
-                let snapshots = response.data;
-                let stockObjs = snapshots;
-                stockObjs = stockTicker.standardizeStockObj(stockObjs);
-                stockObjs = stockTicker.sortStock(stockObjs);
-                stockTicker.updateSubscribedStocks(stockObjs);
-                console.log(stockObjs);
-                stockTicker.setState({ stockObjs });
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
+        axios({
+            method: dataServiceApi.snapshot.method,
+            url: (new URL(dataServiceApi.snapshot.path, this.config['dataServiceHost'])).toString(),
+            params: stdParams
+        })
+        .then(function (response) {
+            let snapshots = response.data;
+            let stockObjs = snapshots;
+            stockObjs = stockTicker.standardizeStockObj(stockObjs);
+            stockObjs = stockTicker.sortStock(stockObjs);
+            stockTicker.updateSubscribedStocks(stockObjs);
+            console.log(stockObjs);
+            stockTicker.setState({ stockObjs });
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
     }
 
     updateStockMessage(msg) {
@@ -525,7 +532,7 @@ export default class StockTicker extends Component {
     }
 
     connect() {
-        const socket = io.connect(this.config['dataServiceApi'], { path: '/realtime', transports: ['websocket'] });
+        const socket = io.connect(this.config['dataServiceHost'], { path: dataServiceApi.realtime.path, transports: ['websocket'] });
         socket.emit('sub', ['FLC', 'HAG', 'HSG', 'MBB', 'PDR', 'PVD', 'SHB', 'VIC', 'VND', 'ASP', 'FTS', 'GVR', 'HAG', 'HCM', 'HDC', 'SSI', 'TCB', 'TGG', 'VOS', 'VTO']);
         socket.on('disconnect',
             (e) => {

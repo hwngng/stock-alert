@@ -31,6 +31,11 @@ h1 {
   justify-content: center;
 }
 
+.form-group .required:after {
+  content: " (*)";
+  color: red;
+}
+
 /*
  * Sidebar
  */
