@@ -159,20 +159,19 @@ namespace CoreIdentity.API.Identity.Controllers
 				}
 				else
 				{
-					JwtSecurityToken jwtSecurityToken = await CreateJwtToken(user).ConfigureAwait(false);
-
-					if (model.IsRemember)
-					{
-						var refreshToken = GenerateRefreshToken();
-						user.RefreshToken = refreshToken;
-						user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwt.RefreshInDays);
-						await _userManager.UpdateAsync(user);
-						tokenModel.RefreshToken = refreshToken;
-					}
-
 					tokenModel.TFAEnabled = false;
-					tokenModel.Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
 
+					var refreshToken = GenerateRefreshToken();
+					var expireDate = DateTime.UtcNow.AddDays(_jwt.RefreshInDays
+															+ (model.IsRemember ? _jwt.RememberExtendDays : 0));
+					user.RefreshToken = refreshToken;
+					user.RefreshTokenExpiryTime = expireDate;
+					await _userManager.UpdateAsync(user);
+					tokenModel.RefreshToken = refreshToken;
+					tokenModel.RefreshExpireTime = Utils.GetEpochTimeSec(expireDate);
+
+					JwtSecurityToken jwtSecurityToken = await CreateJwtToken(user).ConfigureAwait(false);
+					tokenModel.AccessToken = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
 
 					return Ok(tokenModel);
 				}
@@ -207,7 +206,7 @@ namespace CoreIdentity.API.Identity.Controllers
 				{
 					HasVerifiedEmail = true,
 					TFAEnabled = false,
-					Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken)
+					AccessToken = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken)
 				};
 
 				return Ok(tokenModel);
@@ -397,7 +396,7 @@ namespace CoreIdentity.API.Identity.Controllers
 
 			return Ok(new TokenModel
 			{
-				Token = new JwtSecurityTokenHandler().WriteToken(newAccessToken),
+				AccessToken = new JwtSecurityTokenHandler().WriteToken(newAccessToken),
 				RefreshToken = newRefreshToken
 			});
 		}
