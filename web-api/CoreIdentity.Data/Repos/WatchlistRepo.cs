@@ -20,7 +20,7 @@ namespace CoreIdentity.Data.Repos
 
 		public async Task<IEnumerable<Watchlist>> GetByUserId(long userId)
 		{
-			var query =  _ctx.Watchlists.Where(x => x.UserLocalId == userId)
+			var query = _ctx.Watchlists.Where(x => x.UserLocalId == userId)
 										.Select(x => new Watchlist
 										{
 											Id = x.Id,
@@ -62,18 +62,21 @@ namespace CoreIdentity.Data.Repos
 			var watchlist = await this.GetDetailById(userId, watchlistSymbolViewModel.Id);
 			if (watchlist is null)
 				return await Task.FromResult(-1);
-			List<Stock> symbolLst;
+			var comma = "";
 			if (watchlist.SymbolJson is null)
 			{
-				symbolLst = new List<Stock>();
+				watchlist.SymbolJson = "[]";
+			} else if (watchlist.SymbolJson != "[]") {
+				comma = ",";
 			}
-			else
+			var serializeOptions = new JsonSerializerOptions
 			{
-				symbolLst = JsonSerializer.Deserialize<List<Stock>>(watchlist.SymbolJson);
-			}
-			symbolLst.Add(watchlistSymbolViewModel.Symbol);
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+			};
+			var singleJson = JsonSerializer.Serialize(watchlistSymbolViewModel.Symbol, serializeOptions);
 			_ctx.Watchlists.Attach(watchlist);
-			watchlist.SymbolJson = JsonSerializer.Serialize(symbolLst);
+			watchlist.SymbolJson = watchlist.SymbolJson.Insert(watchlist.SymbolJson.Length - 1, comma + singleJson);
+
 			return await _ctx.SaveChangesAsync();
 		}
 
@@ -86,16 +89,22 @@ namespace CoreIdentity.Data.Repos
 			var args = new List<object>();
 			var setStm = "";
 			var argCount = 0;
-
+			var comma = "";
 			if (!string.IsNullOrEmpty(watchlistViewModel.Name))
 			{
-				setStm += $"\"Name\" = {{{argCount++}}}";
+				setStm += $"{comma}\"Name\" = {{{argCount++}}}";
 				args.Add(watchlistViewModel.Name);
+				comma = ",";
 			}
 			if (!(watchlistViewModel.Symbols is null))
 			{
-				setStm += $",\"SymbolJson\" = {{{argCount++}}}";
-				args.Add(JsonSerializer.Serialize(watchlistViewModel.Symbols));
+				setStm += $"{comma}\"SymbolJson\" = {{{argCount++}}}";
+				var serializeOptions = new JsonSerializerOptions
+				{
+					PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+				};
+				args.Add(JsonSerializer.Serialize(watchlistViewModel.Symbols, serializeOptions));
+				comma = ",";
 			}
 			if (string.IsNullOrEmpty(setStm))
 				return await Task.FromResult(-1);
