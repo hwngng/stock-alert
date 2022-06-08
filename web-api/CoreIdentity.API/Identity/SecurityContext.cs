@@ -6,12 +6,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoreIdentity.API.Identity
 {
-    public class SecurityContext : IdentityDbContext<ApplicationUser>
-    {
-        public SecurityContext(DbContextOptions<SecurityContext> options)
-            : base(options)
-        {
-            // Database.EnsureCreated();
-        }
-    }
+	public class SecurityContext : IdentityDbContext<ApplicationUser>
+	{
+		public SecurityContext(DbContextOptions<SecurityContext> options)
+			: base(options)
+		{
+			// Database.EnsureCreated();
+		}
+
+		public DbSet<RefreshToken> RefreshTokens { get; set; }
+	}
 }

@@ -18,6 +18,7 @@ using CoreIdentity.API.Identity.Models;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using CoreIdentity.API.Common;
+using CoreIdentity.API.Identity.Interfaces;
 
 namespace CoreIdentity.API.Identity.Controllers
 {
@@ -27,6 +28,7 @@ namespace CoreIdentity.API.Identity.Controllers
 	{
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly RoleManager<IdentityRole> _roleManager;
+		private readonly IRefreshTokenRepo _repo;
 		private readonly IConfiguration _configuration;
 		private readonly IEmailService _emailService;
 		private readonly ClientAppSettings _client;
@@ -38,7 +40,8 @@ namespace CoreIdentity.API.Identity.Controllers
 			IConfiguration configuration,
 			IEmailService emailService,
 			IOptions<ClientAppSettings> client,
-			IOptions<JwtSecurityTokenSettings> jwt
+			IOptions<JwtSecurityTokenSettings> jwt,
+			IRefreshTokenRepo repo
 			)
 		{
 			this._userManager = userManager;
@@ -47,6 +50,7 @@ namespace CoreIdentity.API.Identity.Controllers
 			this._emailService = emailService;
 			this._client = client.Value;
 			this._jwt = jwt.Value;
+			this._repo = repo;
 		}
 
 		/// <summary>
@@ -162,13 +166,16 @@ namespace CoreIdentity.API.Identity.Controllers
 					tokenModel.TFAEnabled = false;
 
 					var refreshToken = GenerateRefreshToken();
-					var expireDate = DateTime.UtcNow.AddDays(_jwt.RefreshInDays
-															+ (model.IsRemember ? _jwt.RememberExtendDays : 0));
-					user.RefreshToken = refreshToken;
-					user.RefreshTokenExpiryTime = expireDate;
-					await _userManager.UpdateAsync(user);
+					var expiredDate = DateTime.UtcNow.AddHours(_jwt.RefreshInHours)
+													.AddDays(model.IsRemember ? _jwt.RememberExtendDays : 0);
+					await _repo.Insert(new RefreshToken {
+						UserLocalId = user.LocalId,
+						Value = refreshToken,
+						ExpiredDate = expiredDate,
+						IsRemember = model.IsRemember
+					});
 					tokenModel.RefreshToken = refreshToken;
-					tokenModel.RefreshExpireTime = Utils.GetEpochTimeSec(expireDate);
+					tokenModel.RefreshExpireTime = Utils.GetEpochTimeSec(expiredDate);
 
 					JwtSecurityToken jwtSecurityToken = await CreateJwtToken(user).ConfigureAwait(false);
 					tokenModel.AccessToken = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
@@ -380,24 +387,36 @@ namespace CoreIdentity.API.Identity.Controllers
 			}
 
 			string username = principal.Identity.Name;
+			string userIdStr = (principal.Claims).FirstOrDefault(x => x.Type == "lid")?.Value;
 
-			var user = await _userManager.FindByNameAsync(username);
+			if (string.IsNullOrEmpty(userIdStr)) {
+				return BadRequest();
+			}
+			var userId = long.Parse(userIdStr);
+			var fullRfValue = await _repo.GetIsRemember(userId, refreshToken, DateTime.UtcNow);
 
-			if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
+			if (fullRfValue == null)
 			{
 				return BadRequest("Invalid access token or refresh token is expired");
 			}
 
 			var newAccessToken = CreateToken(principal.Claims.ToList());
 			var newRefreshToken = GenerateRefreshToken();
+			var newExpiredDate = DateTime.UtcNow.AddHours(_jwt.RefreshInHours)
+												.AddDays(fullRfValue.IsRemember ? _jwt.RememberExtendDays : 0);
+			fullRfValue.Value = newRefreshToken;
+			fullRfValue.ExpiredDate = newExpiredDate;
+			var isSuccess = await _repo.Update(fullRfValue);
 
-			user.RefreshToken = newRefreshToken;
-			await _userManager.UpdateAsync(user);
+			if (!isSuccess) {
+				return StatusCode(500);
+			}
 
 			return Ok(new TokenModel
 			{
 				AccessToken = new JwtSecurityTokenHandler().WriteToken(newAccessToken),
-				RefreshToken = newRefreshToken
+				RefreshToken = newRefreshToken,
+				RefreshExpireTime = Utils.GetEpochTimeSec(newExpiredDate)
 			});
 		}
 
@@ -412,9 +431,7 @@ namespace CoreIdentity.API.Identity.Controllers
 			var user = await _userManager.FindByNameAsync(username);
 			if (user == null) return BadRequest("Invalid user name");
 
-			user.RefreshToken = null;
-			user.RefreshTokenExpiryTime = null;
-			await _userManager.UpdateAsync(user);
+			await _repo.DeleteByUserId(sessionContext.UserLocalId);
 
 			return Ok();
 		}
@@ -424,13 +441,7 @@ namespace CoreIdentity.API.Identity.Controllers
 		[Route("revokeAll")]
 		public async Task<IActionResult> RevokeAll()
 		{
-			var users = _userManager.Users.ToList();
-			foreach (var user in users)
-			{
-				user.RefreshToken = null;
-				user.RefreshTokenExpiryTime = null;
-				await _userManager.UpdateAsync(user);
-			}
+			await _repo.DeleteAll();
 
 			return Ok();
 		}
