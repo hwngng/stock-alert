@@ -13,5 +13,9 @@ namespace CoreIdentity.API.Identity.Models
 		public string Value { get; set; }
 		public bool IsRemember { get; set; }
 		public DateTime ExpiredDate { get; set; }
+		public DateTime? CreatedAt { get; set; }
+#nullable enable
+		public string? Machine { get; set; }
+#nullable disable
 	}
 }

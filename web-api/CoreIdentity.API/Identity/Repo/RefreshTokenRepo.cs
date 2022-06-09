@@ -46,6 +46,7 @@ namespace CoreIdentity.API.Identity.Repo
 
         public async Task<bool> Insert(RefreshToken refreshToken)
         {
+            refreshToken.CreatedAt = DateTime.UtcNow;
             _ctx.RefreshTokens.Add(refreshToken);
             return await _ctx.SaveChangesAsync() > 0;
         }
