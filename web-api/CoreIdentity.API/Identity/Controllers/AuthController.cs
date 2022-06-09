@@ -392,14 +392,14 @@ namespace CoreIdentity.API.Identity.Controllers
 			string userIdStr = (principal.Claims).FirstOrDefault(x => x.Type == "lid")?.Value;
 
 			if (string.IsNullOrEmpty(userIdStr)) {
-				return BadRequest();
+				return Forbid();
 			}
 			var userId = long.Parse(userIdStr);
 			var fullRfValue = await _repo.GetIsRemember(userId, refreshToken, DateTime.UtcNow);
 
 			if (fullRfValue == null)
 			{
-				return BadRequest("Invalid access token or refresh token is expired");
+				return Forbid("Invalid access token or refresh token is expired");
 			}
 
 			var newAccessToken = CreateToken(principal.Claims.ToList());
@@ -493,7 +493,7 @@ namespace CoreIdentity.API.Identity.Controllers
 
 			var tokenHandler = new JwtSecurityTokenHandler();
 			// resolve Identity.Name, ref: https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/issues/415
-			tokenHandler.InboundClaimTypeMap[JwtRegisteredClaimNames.Sub] = ClaimTypes.Name;
+			// tokenHandler.InboundClaimTypeMap[JwtRegisteredClaimNames.Sub] = ClaimTypes.Name;
 			var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
 			if (!(securityToken is JwtSecurityToken jwtSecurityToken)
 				|| !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))

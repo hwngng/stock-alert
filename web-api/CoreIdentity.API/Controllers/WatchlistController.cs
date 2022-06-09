@@ -41,6 +41,9 @@ namespace CoreIdentity.API.Controllers
 			if (watchlistViewModel is null || string.IsNullOrEmpty(watchlistViewModel.Name))
 				return BadRequest();
 			var (status, insertedId) = await _repo.InsertWatchlist(_sessionContext.UserLocalId, watchlistViewModel);
+			if (status < 1) {
+				return Forbid();
+			}
 			return Ok(new
 			{
 				Status = status,
@@ -55,7 +58,7 @@ namespace CoreIdentity.API.Controllers
 				return BadRequest();
 			var status = await _repo.UpdateWatchlist(_sessionContext.UserLocalId, watchlistViewModel);
 			if (status < 0)
-				return BadRequest();
+				return Forbid();
 			return Ok(status);
 		}
 
@@ -79,7 +82,7 @@ namespace CoreIdentity.API.Controllers
 				return BadRequest();
 			var status = await _repo.InsertSymbol(_sessionContext.UserLocalId, watchlistSymbolViewModel);
 			if (status < 0)
-				return BadRequest();
+				return Forbid();
 			return Ok(status);
 		}
 	}
