@@ -8,6 +8,7 @@ export default class DashboardBasic extends Component {
     constructor(props) {
         super(props);
         this.config = props.config;
+
         let authPage = null;
         switch (document.location.pathname) {
             case '/login':
@@ -18,12 +19,12 @@ export default class DashboardBasic extends Component {
                 break;
         }
         this.authPage = authPage;
-        this.user = Session.getSessionLocal();
+        this.msigSession = Session.getSession();
     }
     render() {
         return (
             <div>
-                <NavBar authPage={this.authPage} config={this.config} user={this.user}/>
+                <NavBar authPage={this.authPage} config={this.config} msigSession={this.msigSession}/>
                 <div id="container" className="container-fluid">
                     <div className="row">
                         <Main config={this.config}/>

@@ -16,6 +16,7 @@ export default class SignUp extends Component {
     }
 
     this.config = props.config;
+    this.apiRequest = WebAPI(this.config['webApiHost']);
   }
 
   handleChange(event) {
@@ -29,9 +30,8 @@ export default class SignUp extends Component {
     let form = this.state.form;
     let that = this;
 
-    axios({
+    this.apiRequest(userApi.register.path, {
       method: userApi.register.method,
-      url: (new URL(userApi.register.path, this.config['webApiHost'])).toString(),
       data: form
     })
       .then(function (response) {

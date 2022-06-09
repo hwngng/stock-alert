@@ -3,8 +3,8 @@ import '../auth.css';
 import userApi from '../../common/api/userApi';
 import Session from '../../common/session';
 import { Modal, Button } from 'react-bootstrap';
-import axios from 'axios';
 import Helper from '../../common/helper';
+import WebAPI from '../../common/request/WebAPI';
 
 export default class Login extends Component {
   constructor(props) {
@@ -18,6 +18,7 @@ export default class Login extends Component {
     }
 
     this.config = props.config;
+    this.apiRequest = WebAPI(this.config['webApiHost']);
   }
 
   handleChange(event) {
@@ -35,15 +36,15 @@ export default class Login extends Component {
       form['userName'] = form['usr'];
     let that = this;
 
-    axios({
+    this.apiRequest(userApi.login.path, {
       method: userApi.login.method,
-      url: (new URL(userApi.login.path, this.config['webApiHost'])).toString(),
       data: form
     })
-      .then(async function (response) {
+      .then(function (response) {
         let tokenModel = response.data;
-        let msigSession = await Session.getSession(tokenModel, that.config['webApiHost']);
-        localStorage.setItem('msigSession', JSON.stringify(msigSession));
+        Session.getUser(tokenModel, that.config['webApiHost'])?.then((user) => {
+          Session.saveSession(user, tokenModel);
+        });
         that.setState({ openPopup: true, successMessage: 'Đăng nhập thành công! Đang điều hướng tới trang chủ...', errorMsg: null, form: {} });
         setTimeout(() => {
           window.location = '/';
@@ -51,7 +52,9 @@ export default class Login extends Component {
       })
       .catch(function (error) {
         form.password = null;
-        that.setState({ errorMsg: error.response.data, form: form });
+        if (error.response) {
+          that.setState({ errorMsg: error.response.data, form: form });
+        }
       });
   }
 

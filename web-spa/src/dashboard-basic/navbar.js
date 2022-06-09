@@ -3,11 +3,27 @@ import './navbar.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHouse } from '@fortawesome/free-solid-svg-icons';
 import Session from '../common/session';
+import userApi from '../common/api/userApi';
+import WebAPI from '../common/request/WebAPI';
 
 
 const NavBar = (props) => {
-    const handleLogout = function () {
+    const apiHost = props.config['webApiHost'];
+    const apiRequest = WebAPI(apiHost);
+
+    const handleLogout = async function () {
         Session.clearSession();
+        let tokenModel = props.msigSession['authSession'];
+        if (apiHost && tokenModel) {
+            let data = {
+                accessToken: tokenModel['accessToken'],
+                refreshToken: tokenModel['refreshToken']
+            };
+            let _ = await apiRequest(userApi.logout.path, {
+                method: userApi.logout.method,
+                data: data
+            });
+        }
         window.location = '/';
     }
 
@@ -36,16 +52,17 @@ const NavBar = (props) => {
             );
             return content;
         }
-        if (props.user) {
+        if (props.msigSession['userSession']) {
+            let user = props.msigSession['userSession']
             let content = (
                 <>
                     <a className="nav-link navbar-avatar" style={{ paddingBottom: '7px' }} href="#" data-toggle="dropdown" aria-expanded="false" data-animation="scale-up" role="button">
                         <div className="">
-                            Hi, {props.user.firstName ?? props.user.lastName ?? props.user.userName}
+                            Hi, {user['firstName'] ?? user['lastName'] ?? user['userName']}
                         </div>
                     </a>
-                    <div className="dropdown-menu" role="menu">
-                        <a className="dropdown-item" href="/profile.html" role="menuitem"><i className="icon md-account" aria-hidden="true"></i>Tài khoản</a>
+                    <div className="dropdown-menu user-menu" role="menu">
+                        <a className="dropdown-item" href="/profile" role="menuitem"><i className="icon md-account" aria-hidden="true"></i>Tài khoản</a>
                         {/* <a className="dropdown-item text-danger" href="/pricing.html" role="menuitem"><i className="icon fa-diamond" aria-hidden="true"></i>Nâng cấp/Gia hạn</a> */}
                         <div className="dropdown-divider" role="presentation"></div>
                         <a className="dropdown-item" role="menuitem" onClick={handleLogout}><i className="icon md-power" aria-hidden="true"></i>Đăng xuất</a>

@@ -56,3 +56,8 @@
 .nav-header .navbar-right {
 	margin-right: 2vw;
 }
+
+.user-menu {
+	width: fit-content;
+	min-width: fit-content;
+}

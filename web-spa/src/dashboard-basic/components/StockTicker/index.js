@@ -1,14 +1,16 @@
 import React, { Component } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 const { io } = require("socket.io-client");
 import { Nav, NavDropdown, InputGroup, FormControl, Button } from 'react-bootstrap';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Autosuggest from 'react-autosuggest';
 import dataServiceApi from '../../../common/api/dataServiceApi';
-export default class StockTicker extends Component {
+import userApi from '../../../common/api/userApi';
+import WebAPIAuth from '../../../common/request/WebAPIAuth';
+import DataService from '../../../common/request/DataService';
 
+export default class StockTicker extends Component {
     constructor(props) {
         super(props);
 
@@ -271,9 +273,11 @@ export default class StockTicker extends Component {
         this.versions = null;
         this.stockInfos = null;
         this.subscribedStocks = [];
+        this.apiAuthRequest = WebAPIAuth(this.config['webApiHost']);
+        this.dataSvcRequest = DataService(this.config['dataServiceHost']);
     }
 
-    async componentWillMount() {
+    componentDidMount() {
         this.loadVersion();
         this.socket = this.connect();
         this.loadSnapshot();
@@ -282,14 +286,26 @@ export default class StockTicker extends Component {
     }
 
     loadWatchlist() {
-        let watchlistStr = localStorage.getItem('watchlist');
-        let watchlist = this.state.watchlist;
-        try {
-            let watchlistObj = JSON.parse(watchlistStr);
-            if (!watchlistObj) return;
-            this.setState({ watchlist: watchlistObj });            
-        } catch (e) {}
+        let that = this;
+
+        this.apiAuthRequest(userApi.getWatchlists.path, {
+            method: userApi.getWatchlists.method
+        })
+            .then(response => {
+                let watchlistObj = response.data;
+                if (!watchlistObj) return;
+                that.setState({ watchlist: watchlistObj });
+            })
+            .catch(error => {
+                console.log(error);
+            });
     }
+
+    loadWatchlistDetail(id) {
+
+    }
+
+    // addSymbolToWatchlist(watchlistId)
 
     loadVersion() {
         this.versions = {}
@@ -314,29 +330,28 @@ export default class StockTicker extends Component {
                 this.stockInfos = this.makeSearchHint(stockInfoObj['infos']);
                 return;
             }
-        } catch (e) {}
+        } catch (e) { }
         // load from data service
         let stockTicker = this;
         let params = {
             all: true
         }
-        axios({
+        this.dataSvcRequest(dataServiceApi.stockInfo.path, {
             method: dataServiceApi.stockInfo.method,
-            url: new URL(dataServiceApi.stockInfo.path, this.config['dataServiceHost']).toString(),
             params: params
         })
-        .then(function (response) {
-            stockInfoObj = {};
-            let infoObj = response.data;
-            stockInfoObj['version'] = infoObj['version'];
-            stockInfoObj['infos'] = infoObj['data'];
-            stockTicker.stockInfo = stockInfoObj['infos'];
-            localStorage.setItem('stockInfos', JSON.stringify(stockInfoObj));
-            stockTicker.stockInfos = stockTicker.makeSearchHint(stockInfoObj['infos']);
-        })
-        .catch(function (error) {
-            console.log(error);
-        });
+            .then(function (response) {
+                stockInfoObj = {};
+                let infoObj = response.data;
+                stockInfoObj['version'] = infoObj['version'];
+                stockInfoObj['infos'] = infoObj['data'];
+                stockTicker.stockInfo = stockInfoObj['infos'];
+                localStorage.setItem('stockInfos', JSON.stringify(stockInfoObj));
+                stockTicker.stockInfos = stockTicker.makeSearchHint(stockInfoObj['infos']);
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
     }
 
     dropNullFields(obj) {
@@ -368,26 +383,28 @@ export default class StockTicker extends Component {
     }
 
     loadSnapshot() {
-        let stockTicker = this;
+        let that = this;
         let stdParams = this.dropNullFields(this.filter);
 
-        axios({
+        this.dataSvcRequest(dataServiceApi.snapshot.path, {
             method: dataServiceApi.snapshot.method,
-            url: (new URL(dataServiceApi.snapshot.path, this.config['dataServiceHost'])).toString(),
-            params: stdParams
+            params: stdParams,
+            paramsSerializer: params => (new URLSearchParams(params)).toString()
         })
-        .then(function (response) {
-            let snapshots = response.data;
-            let stockObjs = snapshots;
-            stockObjs = stockTicker.standardizeStockObj(stockObjs);
-            stockObjs = stockTicker.sortStock(stockObjs);
-            stockTicker.updateSubscribedStocks(stockObjs);
-            console.log(stockObjs);
-            stockTicker.setState({ stockObjs });
-        })
-        .catch(function (error) {
-            console.log(error);
-        });
+            .then(function (response) {
+                let snapshots = response.data;
+                let stockObjs = snapshots;
+                stockObjs = that.standardizeStockObj(stockObjs);
+                stockObjs = that.sortStock(stockObjs);
+                that.updateSubscribedStocks(stockObjs);
+                that.socket.emit('clearSub');
+                that.socket.emit('sub', that.subscribedStocks);
+                console.log(stockObjs);
+                that.setState({ stockObjs });
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
     }
 
     updateStockMessage(msg) {
@@ -533,7 +550,6 @@ export default class StockTicker extends Component {
 
     connect() {
         const socket = io.connect(this.config['dataServiceHost'], { path: dataServiceApi.realtime.path, transports: ['websocket'] });
-        socket.emit('sub', ['FLC', 'HAG', 'HSG', 'MBB', 'PDR', 'PVD', 'SHB', 'VIC', 'VND', 'ASP', 'FTS', 'GVR', 'HAG', 'HCM', 'HDC', 'SSI', 'TCB', 'TGG', 'VOS', 'VTO']);
         socket.on('disconnect',
             (e) => {
                 if (e) {
@@ -731,6 +747,9 @@ export default class StockTicker extends Component {
                         break;
                 }
                 break;
+            case 'watchlist':
+
+                break;
             default:
                 console.log('No valid filter for this tab ' + activeTabKey);
                 break;
@@ -771,9 +790,7 @@ export default class StockTicker extends Component {
         let activeDropdownKey = null;
         let activeDropdownTitle = null;
         this.refreshData(activeTabKey, activeDropdownKey);
-        this.setState({ activeTabKey });
-        this.setState({ activeDropdownKey });
-        this.setState({ activeDropdownTitle });
+        this.setState({ activeTabKey, activeDropdownKey, activeDropdownTitle });
     }
 
     handleChangeDropdownItem(event) {
@@ -782,9 +799,7 @@ export default class StockTicker extends Component {
         let activeDropdownKey = event.currentTarget.getAttribute('value');
         let activeDropdownTitle = event.currentTarget.getAttribute('title');
         this.refreshData(activeTabKey, activeDropdownKey);
-        this.setState({ activeTabKey });
-        this.setState({ activeDropdownKey });
-        this.setState({ activeDropdownTitle });
+        this.setState({ activeTabKey, activeDropdownKey, activeDropdownTitle });
     }
 
     getSuggestions(value) {
@@ -854,6 +869,11 @@ export default class StockTicker extends Component {
         localStorage.setItem('watchlist', JSON.stringify(watchlist));
     }
 
+    removeWatchlist(event) {
+        console.log('🚀 ~ file: index.js ~ line 859 ~ StockTicker ~ removeWatchlist ~ event', event);
+
+    }
+
     renderStockTable(stockObjs) {
         return (
             <div>
@@ -920,7 +940,7 @@ export default class StockTicker extends Component {
     }
 
     render() {
-        const stockTicker = this;
+        const that = this;
         const { searchedSymbol, searchHints, watchlist, watchlistTxt } = this.state;
         let contents = this.state.error
             ? <p><em>Error: {this.state.error.message}</em></p>
@@ -936,25 +956,24 @@ export default class StockTicker extends Component {
         const inputProps = {
             placeholder: 'Nhập mã CK',
             value: searchedSymbol.toString(),
-            onChange: this.onChangeSearchSymbol,
-            onKeyDown: this.onEnter
+            onChange: this.onChangeSearchSymbol.bind(this),
+            onKeyDown: this.onEnter.bind(this)
         };
         return (
             <>
                 <Nav variant="tabs" defaultActiveKey={activeTabKey} className="portfolio-nav">
                     <Nav.Item className="search-nav">
                         <InputGroup className="search-bar">
-                            {/* <FormControl placeholder="Nhập mã CK" aria-label="Nhập mã CK" aria-describedby="basic-addon2"/> */}
                             <Autosuggest
                                 suggestions={searchHints}
-                                onSuggestionsFetchRequested={this.onSuggestionsFetchRequested}
-                                onSuggestionsClearRequested={this.onSuggestionsClearRequested}
-                                onSuggestionSelected={this.onSuggestionSelected}
-                                getSuggestionValue={this.getSuggestionValue}
-                                renderSuggestion={this.renderSuggestion}
+                                onSuggestionsFetchRequested={this.onSuggestionsFetchRequested.bind(this)}
+                                onSuggestionsClearRequested={this.onSuggestionsClearRequested.bind(this).bind(this)}
+                                onSuggestionSelected={this.onSuggestionSelected.bind(this)}
+                                getSuggestionValue={this.getSuggestionValue.bind(this)}
+                                renderSuggestion={this.renderSuggestion.bind(this)}
                                 inputProps={inputProps}
                             />
-                            <Button variant="success" id="add-btn" className="add-stock-btn"><FontAwesomeIcon icon={faPlus} /></Button>
+                            <Button variant="success" id="add-btn" className="add-stock-btn"><FontAwesomeIcon className="plus-icon" icon={faPlus} /></Button>
                         </InputGroup>
                     </Nav.Item>
                     <Nav.Item className="all-nav">
@@ -1001,10 +1020,12 @@ export default class StockTicker extends Component {
                                 return (
                                     <NavDropdown.Item key={w['id']}
                                         value={wid}
-                                        onClick={stockTicker.handleChangeDropdownItem.bind(stockTicker)}
+                                        onClick={that.handleChangeDropdownItem.bind(that)}
                                         active={activeDropdownKey === wid}
-                                        title={w['name']}>
+                                        title={w['name']}
+                                        className="watchlist-item">
                                         <span>{w['name']}</span>
+                                        <Button className="watchlist-remove" onClick={that.removeWatchlist.bind(that)}><FontAwesomeIcon className="xmark-icon" icon={faXmark} /></Button>
                                     </NavDropdown.Item>);
                             })}
                             <NavDropdown.Divider />

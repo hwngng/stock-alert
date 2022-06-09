@@ -218,6 +218,24 @@ h1 {
   text-align: center !important;
 }
 
+.watchlist-remove {
+  margin-left: auto;
+  height: 1.4rem;
+  width: 1.4rem;
+  padding: 0;
+  font-size: 0.9rem;
+  background-color: #dc3545;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.watchlist-item {
+  display: flex;
+  align-items: center;
+}
+
 /*
  * Price table
  */
