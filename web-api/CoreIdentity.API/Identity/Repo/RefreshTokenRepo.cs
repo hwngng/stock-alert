@@ -63,5 +63,12 @@ namespace CoreIdentity.API.Identity.Repo
 
             return affected > 0;
         }
+
+        public async Task<bool> DeleteByValue(long userId, string value)
+        {
+            var affected =  await _ctx.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM \"RefreshTokens\" WHERE \"UserLocalId\"={userId} AND \"Value\"={value}");
+            
+            return affected > 0;
+        }
 	}
 }

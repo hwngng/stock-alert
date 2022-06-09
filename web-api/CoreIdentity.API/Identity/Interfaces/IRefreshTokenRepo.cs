@@ -12,5 +12,6 @@ namespace CoreIdentity.API.Identity.Interfaces
         Task<bool> Insert(RefreshToken refreshToken);
         Task<bool> DeleteByUserId(long userId);
         Task<bool> DeleteAll();
+        Task<bool> DeleteByValue(long userId, string value);
     }
 }

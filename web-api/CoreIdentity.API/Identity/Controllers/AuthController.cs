@@ -377,6 +377,9 @@ namespace CoreIdentity.API.Identity.Controllers
 		[Route("refreshToken")]
 		public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenViewModel refreshModel)
 		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
+
 			string accessToken = refreshModel.AccessToken;
 			string refreshToken = refreshModel.RefreshToken;
 
@@ -386,7 +389,6 @@ namespace CoreIdentity.API.Identity.Controllers
 				return BadRequest("Invalid access token or refresh token");
 			}
 
-			string username = principal.Identity.Name;
 			string userIdStr = (principal.Claims).FirstOrDefault(x => x.Type == "lid")?.Value;
 
 			if (string.IsNullOrEmpty(userIdStr)) {
@@ -418,6 +420,33 @@ namespace CoreIdentity.API.Identity.Controllers
 				RefreshToken = newRefreshToken,
 				RefreshExpireTime = Utils.GetEpochTimeSec(newExpiredDate)
 			});
+		}
+
+		[HttpPost]
+		[ProducesResponseType(typeof(TokenModel), 200)]
+		[ProducesResponseType(typeof(IEnumerable<string>), 400)]
+		[Route("logout")]
+		public async Task<IActionResult> Logout([FromBody] LogoutViewModel logoutViewModel)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
+
+			string accessToken = logoutViewModel.AccessToken;
+			string refreshToken = logoutViewModel.RefreshToken;
+			var principal = GetPrincipalFromExpiredToken(accessToken);
+			if (principal == null)
+			{
+				return BadRequest("Invalid access token or refresh token");
+			}
+			string userIdStr = (principal.Claims).FirstOrDefault(x => x.Type == "lid")?.Value;
+			if (string.IsNullOrEmpty(userIdStr)) {
+				return BadRequest();
+			}
+			var userId = long.Parse(userIdStr);
+			
+			var isSuccess = await _repo.DeleteByValue(userId, logoutViewModel.RefreshToken);
+
+			return Ok(isSuccess);
 		}
 
 		[Authorize]
