@@ -67,11 +67,11 @@ server.listen(port);
 const connections = {}
 
 const handleSub = function(socket, data=null) {
-    console.log(connections);
     if (!Array.isArray(data)) {
         socket.emit('err', { message: 'Invalid input'});
         return false;
     }  
+    console.log(connections);
     let subbed = new Set();
     data.forEach(sym => {
         let isString = typeof(sym) == 'string' || sym instanceof String;
@@ -115,6 +115,22 @@ const handleUnsub = function(socket, data=null) {
     console.log(connections);
 }
 
+const handleClearSub = function (socket, data) {
+    if (!connections[socket.client.id]['sub'] || !(connections[socket.client.id]['sub'] instanceof Set))
+        return;
+    let subbed = connections[socket.client.id]['sub'];
+    subbed.forEach(sym => {
+        let isString = typeof(sym) == 'string' || sym instanceof String;
+        if (!isString) {
+            return;
+        }
+        socket.leave(sym);      
+    });
+
+    connections[socket.client.id]['sub'] = new Set();
+    console.log(connections);
+}
+
 io_server.on('connection', function(socket) {
     console.log("connect: " + socket.client.id);
     connections[socket.client.id] = {};
@@ -131,6 +147,10 @@ io_server.on('connection', function(socket) {
     socket.on('unsub', function(data) {
         handleUnsub(socket, data);
     });
+
+    socket.on('clearSub', function(data) {
+        handleClearSub(socket, data)
+    })
 });
 
 const fileSource = function (path) {
