@@ -371,6 +371,11 @@ namespace CoreIdentity.API.Identity.Controllers
 			return token;
 		}
 
+		/// <summary>
+		/// Refresh access token givent old access token &amp; refresh token
+		/// </summary>
+		/// <param name="refreshModel">RefreshTokenViewModel</param>
+		/// <returns></returns>
 		[HttpPost]
 		[ProducesResponseType(typeof(TokenModel), 200)]
 		[ProducesResponseType(typeof(IEnumerable<string>), 400)]
@@ -422,6 +427,11 @@ namespace CoreIdentity.API.Identity.Controllers
 			});
 		}
 
+		/// <summary>
+		/// Clear login session of users. Expired token user will not be flushed
+		/// </summary>
+		/// <param name="logoutViewModel">LogoutViewModel</param>
+		/// <returns></returns>
 		[HttpPost]
 		[ProducesResponseType(typeof(TokenModel), 200)]
 		[ProducesResponseType(typeof(IEnumerable<string>), 400)]
@@ -449,7 +459,12 @@ namespace CoreIdentity.API.Identity.Controllers
 			return Ok(isSuccess);
 		}
 
-		[Authorize]
+		/// <summary>
+		/// Revoke refresh token of specified user
+		/// </summary>
+		/// <param name="username">string</param>
+		/// <returns></returns>
+		[Authorize(AuthenticationSchemes = "Bearer")]
 		[HttpGet]
 		[Route("revoke")]
 		public async Task<IActionResult> Revoke(string username)
@@ -465,7 +480,11 @@ namespace CoreIdentity.API.Identity.Controllers
 			return Ok();
 		}
 
-		[Authorize]
+		/// <summary>
+		/// Revoke refresh token of all user
+		/// </summary>
+		/// <returns></returns>
+		[Authorize(AuthenticationSchemes = "Bearer")]
 		[HttpGet]
 		[Route("revokeAll")]
 		public async Task<IActionResult> RevokeAll()
