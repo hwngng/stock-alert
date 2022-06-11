@@ -6,5 +6,12 @@ from pg_index i
 join pg_class c on c.oid = indexrelid
 where indrelid::regclass = '"Watchlists"'::regclass;
 
-DELETE FROM "Watchlists" WHERE "Id"=7 AND "UserLocalId"=1;
+DELETE FROM "Watchlists";
 
+select 1 from "Watchlists" where "UserLocalId" = 2;
+
+update "RefreshTokens" set "CreatedAt" = NOW
+
+select "Id", "Name", "UserLocalId"
+from "Watchlists"
+where "UserLocalId" = 2

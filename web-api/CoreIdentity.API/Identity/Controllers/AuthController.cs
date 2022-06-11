@@ -19,12 +19,13 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using CoreIdentity.API.Common;
 using CoreIdentity.API.Identity.Interfaces;
+using CoreIdentity.API.Controllers;
 
 namespace CoreIdentity.API.Identity.Controllers
 {
 	[Produces("application/json")]
 	[Route("api/auth")]
-	public class AuthController : Controller
+	public class AuthController : BaseController
 	{
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly RoleManager<IdentityRole> _roleManager;
@@ -391,20 +392,20 @@ namespace CoreIdentity.API.Identity.Controllers
 			var principal = GetPrincipalFromExpiredToken(accessToken);
 			if (principal == null)
 			{
-				return BadRequest("Invalid access token or refresh token");
+				return Forbidden("Invalid access token or refresh token");
 			}
 
 			string userIdStr = (principal.Claims).FirstOrDefault(x => x.Type == "lid")?.Value;
 
 			if (string.IsNullOrEmpty(userIdStr)) {
-				return Forbid();
+				return Forbidden();
 			}
 			var userId = long.Parse(userIdStr);
 			var fullRfValue = await _repo.GetIsRemember(userId, refreshToken, DateTime.UtcNow);
 
 			if (fullRfValue == null)
 			{
-				return Forbid("Invalid access token or refresh token is expired");
+				return Forbidden("Invalid access token or refresh token is expired");
 			}
 
 			var newAccessToken = CreateToken(principal.Claims.ToList());

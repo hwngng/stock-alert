@@ -52,7 +52,7 @@ namespace CoreIdentity.API.Controllers
 				return BadRequest();
 			var (status, insertedId) = await _repo.InsertWatchlist(_sessionContext.UserLocalId, watchlistViewModel);
 			if (status < 1) {
-				return Forbid();
+				return Forbidden();
 			}
 			return Ok(new
 			{
@@ -73,7 +73,7 @@ namespace CoreIdentity.API.Controllers
 				return BadRequest();
 			var status = await _repo.UpdateWatchlist(_sessionContext.UserLocalId, watchlistViewModel);
 			if (status < 0)
-				return Forbid();
+				return Forbidden();
 			return Ok(status);
 		}
 
@@ -107,7 +107,7 @@ namespace CoreIdentity.API.Controllers
 				return BadRequest();
 			var status = await _repo.InsertSymbol(_sessionContext.UserLocalId, watchlistSymbolViewModel);
 			if (status < 0)
-				return Forbid();
+				return Forbidden();
 			return Ok(status);
 		}
 	}

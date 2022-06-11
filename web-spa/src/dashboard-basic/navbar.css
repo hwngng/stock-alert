@@ -5,8 +5,8 @@
 							  'embedded-opentype', and 'svg' */
 }
 
-.navbar,
-.navbar a {
+.nav-header .navbar,
+.nav-header .navbar a {
 	width: auto;
 	overflow: auto;
 }

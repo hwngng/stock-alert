@@ -19,10 +19,30 @@ const userApi = {
 		method: 'get',
 		path: '/api/user/current'
 	},
-	getWatchlists: {
+	watchlists: {
 		method: 'get',
 		path: '/api/watchlist'
-	}
+	},
+	watchlistDetail: {
+		method: 'get',
+		path: '/api/watchlist'
+	},
+	removeWatchlist: {
+		method: 'delete',
+		path: '/api/watchlist'
+	},
+	insertWatchlist: {
+		method: 'post',
+		path: '/api/watchlist'
+	},
+	updateWatchlist: {
+		method: 'put',
+		path: '/api/watchlist'
+	},
+	insertWatchlistSymbol: {
+		method: 'post',
+		path: '/api/watchlist/symbol'
+	},
 }
 
 export default userApi;

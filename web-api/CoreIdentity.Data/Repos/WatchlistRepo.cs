@@ -26,7 +26,8 @@ namespace CoreIdentity.Data.Repos
 											Id = x.Id,
 											Name = x.Name,
 											UserLocalId = x.UserLocalId
-										});
+										})
+										.OrderBy(x => x.Id);
 			return await query.ToListAsync();
 		}
 

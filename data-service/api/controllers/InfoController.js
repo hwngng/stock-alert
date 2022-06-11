@@ -47,7 +47,7 @@ module.exports = {
 		const query = `SELECT "symbol", "exchange_code", "name", "short_name", "name_eng"\
 						FROM "stock_tickers"
 						WHERE 1=1
-							${params.codes ? `"AND symbol" = ANY ($${paramCount++})`: ''}\
+							${params.codes ? `AND "symbol" = ANY ($${paramCount++})`: ''}\
 							${params.exchangeCodes ? `AND "exchange_code" = ANY ($${paramCount++})`: ''}\
 							${params.top30 ? `AND "top30" = $${paramCount++}`: ''}\;`;
 		const values = [];
