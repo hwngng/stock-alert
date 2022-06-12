@@ -25,9 +25,10 @@ export default class StockTicker extends Component {
             activeDropdownKey: 'vn30',
             searchHints: [],
             searchedSymbol: '',
-            watchlist: [],
+            watchlists: [],
             watchlistTxt: '',
-            editMode: false
+            editWatchlistMode: false,
+            newWatchlistName: ''
         };
 
         this.socket = null;
@@ -287,7 +288,7 @@ export default class StockTicker extends Component {
     }
 
     loadWatchlist() {
-        let that = this;
+        const that = this;
 
         this.apiAuthRequest(userApi.watchlists.path, {
             method: userApi.watchlists.method
@@ -295,7 +296,7 @@ export default class StockTicker extends Component {
             .then(response => {
                 let watchlistObj = response.data;
                 if (!watchlistObj) return;
-                that.setState({ watchlist: watchlistObj });
+                that.setState({ watchlists: watchlistObj });
             })
             .catch(error => {
                 console.log(error);
@@ -303,7 +304,6 @@ export default class StockTicker extends Component {
     }
 
     async loadWatchlistDetail(id) {
-        let that = this;
         let detail = {};
         try {
             let response = await this.apiAuthRequest(userApi.watchlistDetail.path, {
@@ -395,15 +395,15 @@ export default class StockTicker extends Component {
         return stdStockObjs;
     }
 
-    updateSubscribedStocks(stockObjs) {
-        this.subscribedStocks = stockObjs.map(x => x.Symbol);
+    reloadSubscribedStocks(stockObjs) {
+        this.subscribedStocks = stockObjs.map(s => ({ symbol: s['Symbol'], exchangeCode: s['ExchangeCode'] }));
         this.socket.emit('clearSub');
-        this.socket.emit('sub', this.subscribedStocks);
+        this.socket.emit('sub', this.subscribedStocks?.map(s => s['symbol']));
         // console.log(this.subscribedStocks);
     }
 
     async loadSnapshot() {
-        let that = this;
+        const that = this;
         let stdParams = this.dropNullFields(this.filter);
         try {
             let response = await this.dataSvcRequest(dataServiceApi.snapshot.path, {
@@ -415,7 +415,7 @@ export default class StockTicker extends Component {
             let stockObjs = snapshots;
             stockObjs = that.standardizeStockObj(stockObjs);
             stockObjs = that.sortStock(stockObjs);
-            that.updateSubscribedStocks(stockObjs);
+            that.reloadSubscribedStocks(stockObjs);
             that.setState({ stockObjs });
         } catch (e) {
             console.log(e);
@@ -792,14 +792,18 @@ export default class StockTicker extends Component {
         }
     }
 
+
+
     async addSymbolWatchlist(symbol) {
         const { activeTabKey, activeDropdownKey } = this.state;
+        let { stockObjs } = this.state;
         if (activeTabKey != 'watchlist') return;
         let symbolDetail = this.stockInfos?.find(si => si.symbol === symbol);
         if (symbolDetail) {
+            let symbolObj = { symbol: symbolDetail['symbol'], exchangeCode: symbolDetail['exchange_code'] };
             let newSymbol = {
                 id: activeDropdownKey,
-                symbol: { symbol: symbolDetail['symbol'], exchangeCode: symbolDetail['exchange_code'] }
+                symbol: symbolObj
             }
             try {
                 let response = await this.apiAuthRequest(userApi.insertWatchlistSymbol.path, {
@@ -809,7 +813,25 @@ export default class StockTicker extends Component {
                 let status = response.data;
                 if (status <= 0)
                     return;
-                await this.refreshData(activeTabKey, activeDropdownKey);
+                // await this.refreshData(activeTabKey, activeDropdownKey);
+                this.fillObject(this.filter, null);
+                this.filter = {
+                    codes: [symbolObj.symbol],
+                    exchangeCodes: [symbolObj.exchangeCode]
+                };
+                let stdParams = this.dropNullFields(this.filter);
+                response = await this.dataSvcRequest(dataServiceApi.snapshot.path, {
+                    method: dataServiceApi.snapshot.method,
+                    params: stdParams,
+                    paramsSerializer: params => (new URLSearchParams(params)).toString()
+                });
+                let insertStockObjs = response.data;
+                insertStockObjs = this.standardizeStockObj(insertStockObjs);
+                stockObjs = stockObjs.concat(insertStockObjs);
+                stockObjs = this.sortStock(stockObjs);
+                this.subscribedStocks?.push(symbolObj);
+                this.socket.emit('sub', [symbolObj.symbol]);
+                this.setState({ stockObjs });
             } catch (e) {
                 console.log(e);
                 // alert
@@ -830,7 +852,7 @@ export default class StockTicker extends Component {
         await this.loadSnapshot();
     }
 
-    handleChangeTab(event, tabKey, dropdownKey) {
+    async handleChangeTab(event, tabKey, dropdownKey) {
         event.preventDefault();
         let activeTabKey = tabKey;
         let activeDropdownKey = dropdownKey;
@@ -838,7 +860,7 @@ export default class StockTicker extends Component {
         if (activeDropdownKey) {
             activeDropdownTitle = event.currentTarget.getAttribute('title');
         }
-        this.refreshData(activeTabKey, activeDropdownKey);
+        await this.refreshData(activeTabKey, activeDropdownKey);
         this.setState({ activeTabKey, activeDropdownKey, activeDropdownTitle });
     }
 
@@ -899,16 +921,16 @@ export default class StockTicker extends Component {
     }
 
     onChangeWatchlistTxt(event) {
-        let watchlistTxt = this.state.watchlistTxt;
+        let { watchlistTxt } = this.state;
         watchlistTxt = event.target.value;
         this.setState({ watchlistTxt });
     }
 
     addWatchlist() {
-        let that = this;
-        let { watchlist, watchlistTxt, activeTabKey, activeDropdownKey, activeDropdownTitle } = this.state;
+        const that = this;
+        let { watchlists, watchlistTxt, activeTabKey, activeDropdownKey, activeDropdownTitle } = this.state;
         if (!watchlistTxt) return;
-        if (!Array.isArray(watchlist)) watchlist = [];
+        if (!Array.isArray(watchlists)) watchlists = [];
         let newWatchlist = { name: watchlistTxt };
         this.apiAuthRequest(userApi.insertWatchlist.path, {
             method: userApi.insertWatchlist.method,
@@ -921,13 +943,13 @@ export default class StockTicker extends Component {
                     return;
                 }
                 newWatchlist['id'] = newWlInfo['id'];
-                watchlist.push(newWatchlist);
+                watchlists.push(newWatchlist);
                 watchlistTxt = '';
                 if (activeTabKey == 'watchlist') {
                     activeDropdownKey = newWatchlist['id'];
                     activeDropdownTitle = newWatchlist['name'];
                 }
-                that.setState({ watchlist, watchlistTxt, activeDropdownKey, activeDropdownTitle });
+                that.setState({ watchlists, watchlistTxt, activeDropdownKey, activeDropdownTitle });
                 this.refreshData(activeTabKey, activeDropdownKey);
             })
             .catch(error => {
@@ -947,11 +969,11 @@ export default class StockTicker extends Component {
             if (status <= 0) {
                 // alert
             }
-            let {activeTabKey, activeDropdownKey, activeDropdownTitle, watchlist} = this.state;
-            if (!Array.isArray(watchlist)) watchlist = [];
-            watchlist = watchlist.filter(w => w['id'] != wid);
-            if (activeTabKey == 'watchlist') {
-                let first = watchlist[0];
+            let { activeTabKey, activeDropdownKey, activeDropdownTitle, watchlists } = this.state;
+            if (!Array.isArray(watchlists)) watchlists = [];
+            watchlists = watchlists.filter(w => w['id'] != wid);
+            if (activeTabKey == 'watchlist' && activeDropdownKey == wid) {
+                let first = watchlists[0];
                 if (first) {
                     activeDropdownKey = first['id'];
                     activeDropdownTitle = first['name'];
@@ -960,16 +982,28 @@ export default class StockTicker extends Component {
                     activeDropdownTitle = '';
                 }
             }
-            this.setState({activeDropdownKey, activeDropdownTitle, watchlist});
+            this.setState({ activeDropdownKey, activeDropdownTitle, watchlists });
             this.refreshData(activeTabKey, activeDropdownKey);
         } catch (e) {
             console.log(e);
             // alert 
         }
+    }
 
+    removeSymbolWatchlist(event, symbol) {
+        const { activeTabKey, activeDropdownKey } = this.state;
+        let { stockObjs } = this.state;
+        if (activeTabKey != 'watchlist') return;
+        stockObjs = stockObjs?.filter(s => s['Symbol'] != symbol['Symbol']);
+        this.subscribedStocks = this.subscribedStocks?.filter(ss => ss['symbol'] != symbol['Symbol']);
+        this.socket.emit('unsub', [symbol['Symbol']]);
+        this.updateWatchlist(activeDropdownKey, false, true);
+        this.setState({ stockObjs });
     }
 
     renderStockTable(stockObjs) {
+        const that = this;
+        const { activeTabKey } = this.state;
         return (
             <div>
                 <div className="table-responsive table-fix-head">
@@ -1012,8 +1046,20 @@ export default class StockTicker extends Component {
                                 return (
                                     <tr key={s.Symbol} id={s.Symbol} className="align-midle">
                                         <td>
-                                            <Link to={`/stock-chart?code=${s.Symbol}`} target="_blank">{s.Symbol}</Link>
-                                            <input name="exchangeCode" type="hidden" value={s.ExchangeCode}></input>
+                                            <div className="symbol clear-fix">
+                                                <Link className="symbol-link" to={`/stock-chart?code=${s.Symbol}`} target="_blank">{s.Symbol}</Link>
+                                                <input name="exchangeCode" type="hidden" value={s.ExchangeCode}></input>
+                                                {activeTabKey == 'watchlist' &&
+                                                    (
+                                                        <Button
+                                                            className="symbol-control-btn remove float-end"
+                                                            onClick={e => that.removeSymbolWatchlist(e, s)}
+                                                        >
+                                                            <FontAwesomeIcon className="control-icon" icon={faXmark} />
+                                                        </Button>
+                                                    )
+                                                }
+                                            </div>
                                         </td>
                                         <td className={'match-price ' + s.PriceTrendClass}>{this.formatFloat(s.MatchPrice, 2, true)}</td>
                                         <td className="price-nochange">{this.formatFloat(s.RefPrice, 2, true)}</td>
@@ -1034,18 +1080,104 @@ export default class StockTicker extends Component {
         );
     }
 
-    renderEditWatchlist() {
-        const {editMode} = this.state;
-        return(
-            <>
+    onClickEditWatchlist(event) {
+        event.stopPropagation();
+    }
 
-            </>
+    onChangeEditWatchlist(event, watchlist) {
+        let { newWatchlistName } = this.state;
+        newWatchlistName = event.target.value;
+        this.setState({ newWatchlistName });
+    }
+
+    updateWatchlist(wid, isEditName = false, isEditSymbol = false) {
+        const that = this;
+        const { watchlists, activeTabKey, activeDropdownKey, newWatchlistName } = this.state;
+        let { activeDropdownTitle } = this.state;
+        const editedWatchlist = watchlists?.find(w => w['id'] == wid);
+        if (!editedWatchlist)
+            return;
+        let updatedName = isEditName ? newWatchlistName : null;
+        let updatedSymbol = isEditSymbol ? this.subscribedStocks : null;
+        this.apiAuthRequest(userApi.updateWatchlist.path, {
+            method: userApi.updateWatchlist.method,
+            data: {
+                id: wid,
+                name: updatedName,
+                symbols: updatedSymbol
+            }
+        })
+            .then(response => {
+                let status = response.data;
+                if (status && status > 0) {
+                    if (isEditName) {
+                        editedWatchlist['editMode'] = false;
+                        editedWatchlist['name'] = newWatchlistName;
+                        if (activeTabKey == 'watchlist' && activeDropdownKey == editedWatchlist['id']) {
+                            activeDropdownTitle = editedWatchlist['name']
+                        }
+                    }
+                    if (isEditSymbol) {
+
+                    }
+                    that.setState({ watchlists, activeDropdownTitle });
+                }
+            })
+    }
+
+    onEnterEditWatchlist(event, wid) {
+        if (event.keyCode === 13) {
+            this.updateWatchlist(wid, true, false);
+        }
+    }
+
+    turnOnEditWatchlistMode(event, watchlist) {
+        event.preventDefault();
+        event.stopPropagation();
+        const { watchlists } = this.state;
+        let { newWatchlistName } = this.state;
+        // watchlist referenced to watchlists state, hence changing watchlist['name']'ll impact watchlists
+        watchlists.forEach(w => w['editMode'] = false);
+        watchlist['editMode'] = true;
+        newWatchlistName = watchlist['name'];
+        this.setState({ watchlists, newWatchlistName })
+    }
+
+    turnOffEditWatchlistMode(event, watchlist) {
+        event.preventDefault();
+        event.stopPropagation();
+        const { watchlists } = this.state;
+        // watchlist referenced to watchlists state, hence changing watchlist['name']'ll impact watchlists
+        watchlists.forEach(w => w['editMode'] = false);
+        this.setState({ watchlists })
+    }
+
+    renderWatchlistName(watchlist) {
+        const that = this;
+        if (watchlist['editMode']) {
+            const { newWatchlistName } = this.state;
+            return (
+                <>
+                    <FormControl
+                        value={newWatchlistName}
+                        onChange={e => that.onChangeEditWatchlist(e, watchlist)}
+                        className="edit-watchlist-txt"
+                        onKeyDown={e => that.onEnterEditWatchlist(e, watchlist['id'])}
+                        onClick={this.onClickEditWatchlist.bind(this)}
+                        onBlur={e => this.turnOffEditWatchlistMode(e, watchlist)}
+                    />
+                </>
+            )
+        }
+
+        return (
+            <span>{watchlist['name']}</span>
         )
     }
 
     render() {
         const that = this;
-        const { searchedSymbol, searchHints, watchlist, watchlistTxt, activeTabKey, activeDropdownKey, activeDropdownTitle } = this.state;
+        const { searchedSymbol, searchHints, watchlists, watchlistTxt, activeTabKey, activeDropdownKey, activeDropdownTitle } = this.state;
         let contents = this.state.error
             ? <p><em>Error: {this.state.error.message}</em></p>
             : this.state.loading
@@ -1145,19 +1277,20 @@ export default class StockTicker extends Component {
                             active={activeTabKey === "watchlist"}
                             title={(activeDropdownTitle && activeTabKey === "watchlist") ? activeDropdownTitle : "DS Theo dõi"}
                         >
-                            {watchlist.map(function (w, idx) {
+                            {watchlists.map(function (w, idx) {
                                 let wid = w['id'];
                                 return (
-                                    <NavDropdown.Item key={w['id']}
+                                    <NavDropdown.Item key={wid}
                                         value={wid}
                                         onClick={e => that.handleChangeTab(e, 'watchlist', wid)}
                                         active={activeDropdownKey === wid}
                                         title={w['name']}
-                                        className="watchlist-item">
-                                        <span>{w['name']}</span>
+                                        className="watchlist-item"
+                                    >
+                                        {that.renderWatchlistName(w)}
                                         <span className="watchlist-control">
-                                        <Button className="watchlist-control-btn" onClick={e => that.removeWatchlist(e, wid)}><FontAwesomeIcon className="control-icon" icon={faPen} /></Button>
-                                        <Button className="watchlist-control-btn remove" onClick={e => that.removeWatchlist(e, wid)}><FontAwesomeIcon className="control-icon" icon={faXmark} /></Button>
+                                            <Button className="watchlist-control-btn" onClick={e => that.turnOnEditWatchlistMode(e, w)}><FontAwesomeIcon className="control-icon" icon={faPen} /></Button>
+                                            <Button className="watchlist-control-btn remove" onClick={e => that.removeWatchlist(e, wid)}><FontAwesomeIcon className="control-icon" icon={faXmark} /></Button>
                                         </span>
                                     </NavDropdown.Item>);
                             })}

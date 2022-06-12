@@ -102,7 +102,7 @@ h1 {
 }
 
 .react-autosuggest__container {
-  position: relative; 
+  position: relative;
 }
 
 .react-autosuggest__input {
@@ -139,7 +139,7 @@ h1 {
   border-bottom-right-radius: 4px;
   overflow-y: auto;
   z-index: 2;
-  
+
 }
 
 .react-autosuggest__suggestions-list {
@@ -201,7 +201,7 @@ h1 {
   width: 5.5rem;
 }
 
-.hose-nav  .dropdown-toggle {
+.hose-nav .dropdown-toggle {
   vertical-align: middle !important;
   text-align: center !important;
 }
@@ -261,6 +261,42 @@ h1 {
 /*
  * Price table
  */
+
+ .price-table tr:hover {
+   background-color: rgba(133, 239, 243, 0.2) !important;
+ }
+
+.price-table .symbol {
+  width: 4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.symbol-control-btn {
+  height: 1.4rem;
+  width: 1.4rem;
+  padding: 0;
+  font-size: 1rem;
+  background-color: transparent;
+  color: black;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 10px;
+  display: none;
+}
+
+.symbol-control-btn.remove:hover {
+  background-color: transparent;
+  color: #dc3545;
+}
+
+.price-table tr:hover .symbol-control-btn {
+  display: block;
+}
+
 .highlight-down {
   border-radius: 3px;
   animation: transition-down 1100ms ease-out;
@@ -280,28 +316,34 @@ h1 {
   0% {
     background-color: #dc3545;
   }
-  100% {
-    background-color: white;
-  }
-}
-@keyframes transition-up {
-  0% {
-    background-color: #28a745;
-  }
-  100% {
-    background-color: white;
-  }
-}
-@keyframes transition-nochange {
-  0% {
-    background-color: #ffc107;
-  }
+
   100% {
     background-color: white;
   }
 }
 
-.align-middle th, .align-middle td {
+@keyframes transition-up {
+  0% {
+    background-color: #28a745;
+  }
+
+  100% {
+    background-color: white;
+  }
+}
+
+@keyframes transition-nochange {
+  0% {
+    background-color: #ffc107;
+  }
+
+  100% {
+    background-color: white;
+  }
+}
+
+.align-middle th,
+.align-middle td {
   vertical-align: middle !important;
   text-align: center !important;
 }
@@ -328,7 +370,8 @@ h1 {
   background-color: white;
 }
 
-.table-fix-head th, .table-fix-head td {
+.table-fix-head th,
+.table-fix-head td {
   border-top: 0;
   border-left: 0;
 }
@@ -354,7 +397,7 @@ h1 {
   color: #ffc107 !important;
 }
 
-.table-striped>tbody>tr:nth-child(odd)>td, 
+.table-striped>tbody>tr:nth-child(odd)>td,
 .table-striped>tbody>tr:nth-child(odd)>th {
   background-color: rgba(0, 0, 0, 0.001);
 }
