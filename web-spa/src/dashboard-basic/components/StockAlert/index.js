@@ -1,19 +1,20 @@
 import axios from 'axios';
 import React, { Component } from 'react';
-import {NotificationContainer, NotificationManager} from 'react-notifications';
+import { NotificationContainer, NotificationManager } from 'react-notifications';
 import 'react-notifications/lib/notifications.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGear } from '@fortawesome/free-solid-svg-icons'
+import AlertSettings from '../AlertSettings';
 
 export default class StockAlert extends Component {
 
     constructor(props) {
         super(props);
 
-        this.apiUrl = props.apiUrl;
+        this.config = props.config;
 
-        this.state = { 
-            
+        this.state = {
+            isShowSetting: false
         };
 
         this.alertOption = {
@@ -29,7 +30,7 @@ export default class StockAlert extends Component {
             "TASignals": {
                 "sma": 1
             },
-            "stockCodes": ["FLC","HAG","HSG","MBB","PDR","PVD","SHB","VIC","VND","ASP","FTS","GVR","HAG","HCM","HDC","SSI","TCB","TGG","VOS","VTO"]
+            "stockCodes": ["FLC", "HAG", "HSG", "MBB", "PDR", "PVD", "SHB", "VIC", "VND", "ASP", "FTS", "GVR", "HAG", "HCM", "HDC", "SSI", "TCB", "TGG", "VOS", "VTO"]
         }
         this.alertOption = {};
         let alertOptionsStr = localStorage.getItem("alertOptions");
@@ -39,14 +40,14 @@ export default class StockAlert extends Component {
                 alertOptions = JSON.parse(alertOptionsStr);
                 if ("highestInRange" in alertOptions) {
                     alertOptions["highestInRange"].toDate = this.formatDate(new Date(alertOptions["highestInRange"].toDate));
-                    let dateOffset = (24*60*60*1000)*parseInt(alertOptions["highestInRange"].fromDate);
+                    let dateOffset = (24 * 60 * 60 * 1000) * parseInt(alertOptions["highestInRange"].fromDate);
                     let fromDate = new Date();
                     fromDate.setTime(new Date(alertOptions["highestInRange"].toDate).getTime() - dateOffset);
                     alertOptions["highestInRange"].fromDate = this.formatDate(new Date(fromDate));
                 }
                 if ("lowestInRange" in alertOptions) {
                     alertOptions["lowestInRange"].toDate = this.formatDate(new Date(alertOptions["lowestInRange"].toDate));
-                    let dateOffset = (24*60*60*1000)*parseInt(alertOptions["lowestInRange"].fromDate);
+                    let dateOffset = (24 * 60 * 60 * 1000) * parseInt(alertOptions["lowestInRange"].fromDate);
                     let fromDate = new Date();
                     fromDate.setTime(new Date(alertOptions["lowestInRange"].toDate).getTime() - dateOffset);
                     alertOptions["lowestInRange"].fromDate = this.formatDate(new Date(fromDate));
@@ -61,7 +62,7 @@ export default class StockAlert extends Component {
         }
 
         console.log(this.alertOption);
-        
+
         this.alertResult = {
             "highestInRange": [],
             "lowestInRange": [],
@@ -73,7 +74,7 @@ export default class StockAlert extends Component {
         this.apiRequestIntervalID = 0;
     }
 
-    showAlert (type, stockCode) {
+    showAlert(type, stockCode) {
         switch (type) {
             case "highestInRange":
                 NotificationManager.info(`${stockCode} giá tăng phá đỉnh 1 năm`, "", 3000);
@@ -91,7 +92,7 @@ export default class StockAlert extends Component {
 
     formatDate(date) {
         let year = date.getFullYear();
-        let month = date.getMonth()+1;
+        let month = date.getMonth() + 1;
         let day = date.getDate();
         if (!year) {
             let currentDate = new Date();
@@ -105,25 +106,25 @@ export default class StockAlert extends Component {
             day = 1;
         }
 
-        return `${year}-${month < 10 ? '0'+month : month}-${day < 10 ? '0'+day : day}`;
+        return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
     }
 
-    createAlerts (alertQueue, stockAlert) {
+    createAlerts(alertQueue, stockAlert) {
         let timeout = 100;
         Object.keys(alertQueue).forEach(function (key) {
             if (key !== "taSignals") {
-                alertQueue[key].forEach(function(el) {
-                    setTimeout(stockAlert.showAlert, (timeout+=1000), key, el);
+                alertQueue[key].forEach(function (el) {
+                    setTimeout(stockAlert.showAlert, (timeout += 1000), key, el);
                 });
             }
         });
     }
 
-    removeOldAlert (alertQueue, stockAlert) {
+    removeOldAlert(alertQueue, stockAlert) {
         Object.keys(alertQueue).forEach(function (key) {
             if (key in stockAlert.alertResult) {
                 if (key !== "taSignals") {
-                    stockAlert.alertResult[key] = stockAlert.alertResult[key].filter(function(value, index, arr){
+                    stockAlert.alertResult[key] = stockAlert.alertResult[key].filter(function (value, index, arr) {
                         return !alertQueue[key].includes(value);
                     });
                 }
@@ -131,34 +132,34 @@ export default class StockAlert extends Component {
         });
     }
 
-    stockAlertSchedule (stockAlert) {
+    stockAlertSchedule(stockAlert) {
         let alertOption = stockAlert.alertOption;
         let alertQueue = {};
         console.log(alertOption);
         axios.post(stockAlert.apiUrl, alertOption)
-        .then(function (response) {
-            let tmpAlertResult = response.data;
-            Object.keys(tmpAlertResult).forEach(function(key) {
-                if (key in stockAlert.alertResult) {
-                    if (key !== "taSignals") {
-                        // merge arrays
-                        tmpAlertResult[key].forEach(function(el) {
-                            if (!stockAlert.alertResult[key].includes(el)) {
-                                stockAlert.alertResult[key].push(el);
-                                if (!(key in alertQueue)) {
-                                    alertQueue[key] = [];
+            .then(function (response) {
+                let tmpAlertResult = response.data;
+                Object.keys(tmpAlertResult).forEach(function (key) {
+                    if (key in stockAlert.alertResult) {
+                        if (key !== "taSignals") {
+                            // merge arrays
+                            tmpAlertResult[key].forEach(function (el) {
+                                if (!stockAlert.alertResult[key].includes(el)) {
+                                    stockAlert.alertResult[key].push(el);
+                                    if (!(key in alertQueue)) {
+                                        alertQueue[key] = [];
+                                    }
+                                    alertQueue[key].push(el);
                                 }
-                                alertQueue[key].push(el);
-                            }
-                        })
+                            })
+                        }
                     }
+                });
+                if (alertQueue && Object.keys(alertQueue).length > 0) {
+                    stockAlert.createAlerts(alertQueue, stockAlert);
+                    setTimeout(stockAlert.removeOldAlert, 60000, alertQueue, stockAlert);
                 }
-            });
-            if (alertQueue && Object.keys(alertQueue).length > 0) {
-                stockAlert.createAlerts(alertQueue, stockAlert);
-                setTimeout(stockAlert.removeOldAlert, 60000, alertQueue, stockAlert);
-            }
-        })
+            })
     }
 
     notifyTest() {
@@ -170,11 +171,21 @@ export default class StockAlert extends Component {
         // this.apiRequestIntervalID = setInterval(this.stockAlertSchedule, 1500, stockAlert);
     }
 
-    componentWillUnmount () {
+    componentWillUnmount() {
         clearInterval(this.apiRequestIntervalID);
     }
 
+    handleOpenModal() {
+        this.setState({ isShowSetting: true });
+    }
+
+    handleCloseModal() {
+        this.setState({ isShowSetting: false });
+    }
+
     render() {
+        const { isShowSetting } = this.state;
+
         return (
             <div>
                 <NotificationContainer />
@@ -190,7 +201,11 @@ export default class StockAlert extends Component {
                             <tr>
                                 <th className="">Mã</th>
                                 <th className="border-right-0">Nội dung</th>
-                                <th className="border-left-0 alert-setting"><FontAwesomeIcon icon={faGear}/></th>
+                                <th className="border-left-0">
+                                    <div className="alert-setting" onClick={this.handleOpenModal.bind(this)}>
+                                        <FontAwesomeIcon icon={faGear} />
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -222,7 +237,10 @@ export default class StockAlert extends Component {
                         </tbody>
                     </table>
                 </div>
-            </div>                    
+                {isShowSetting && (
+                    <AlertSettings config={this.config} isShowModal={isShowSetting} handleCloseModal={this.handleCloseModal.bind(this)}></AlertSettings>
+                )}
+            </div>
         );
     }
 }

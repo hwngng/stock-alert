@@ -258,6 +258,11 @@ h1 {
   align-items: center;
 }
 
+.edit-watchlist-txt {
+  height: 1.9rem !important;
+  padding-left: 6px !important;
+}
+
 /*
  * Price table
  */
@@ -271,6 +276,10 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.symbol-link {
+  cursor: pointer;
 }
 
 .symbol-control-btn {
@@ -409,6 +418,15 @@ h1 {
 .alert-setting {
   font-size: larger;
   text-align: center;
+  width: 2rem;
+  height: 2rem;
+  line-height: 2rem;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.alert-setting:hover {
+  color: rgba(0, 0, 0, 0.6);
 }
 
 
@@ -416,9 +434,9 @@ h1 {
   font-size: 0.9em;
 }
 
-.alert-table>thead {
-  vertical-align: middle;
-  font-size: medium;
+.alert-table th {
+  vertical-align: middle !important;
+  font-size: 1.1rem;
 }
 
 .alert-symbol {

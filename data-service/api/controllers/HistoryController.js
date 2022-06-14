@@ -16,7 +16,7 @@ module.exports = {
 		let toTimestamp = req.query.epoch_sec_to;
 		let exchangeCodes = req.query.exchange_codes;
 
-		if (!codes || !fromTimestamp) {
+		if (!codes) {
 			error.err_code = 400;
 			error.err_msg = 'Lack of required input';
 			res.json(error);
@@ -25,14 +25,16 @@ module.exports = {
 		
 		// preprocess input
 		codes = codes.split(',');
-		fromTimestamp = (new Date(fromTimestamp*1000)).toISOString();
+		fromTimestamp = (fromTimestamp ? new Date(fromTimestamp*1000) : new Date(915148800000)).toISOString();
 		toTimestamp = (toTimestamp ? new Date(toTimestamp * 1000) : new Date()).toISOString();
 		if (exchangeCodes)
 			exchangeCodes = exchangeCodes.split(',');
 		
 		const query = `SELECT "stock_id", "symbol", "exchange_code", "dt", "open", "high", "low", "close", "volume"\
 						FROM "stock_tickers" as st join "stock_prices" as sp on st.id=sp.stock_id\
-						WHERE "symbol" = ANY ($1) ${exchangeCodes ? 'and "exchange_code" = ANY ($4)': ''} and ($2 <= dt and  dt <= $3)\
+						WHERE "symbol" = ANY ($1)\
+							AND ($2 <= dt and  dt <= $3)\
+							${exchangeCodes ? 'AND "exchange_code" = ANY ($4)': ''}\
 						ORDER BY "symbol", "dt"`;
 		const values = [codes, fromTimestamp, toTimestamp];
 		if (exchangeCodes) {

@@ -9,6 +9,7 @@ import dataServiceApi from '../../../common/api/dataServiceApi';
 import userApi from '../../../common/api/userApi';
 import WebAPIAuth from '../../../common/request/WebAPIAuth';
 import DataService from '../../../common/request/DataService';
+import StockChart from '../StockChart';
 
 export default class StockTicker extends Component {
     constructor(props) {
@@ -28,11 +29,12 @@ export default class StockTicker extends Component {
             watchlists: [],
             watchlistTxt: '',
             editWatchlistMode: false,
-            newWatchlistName: ''
+            newWatchlistName: '',
+            chartStock: {},
+            isShowChart: false
         };
 
         this.socket = null;
-        this.apiUrl = props.apiUrl;
         this.config = props.config;
 
         this.format = {}
@@ -258,14 +260,7 @@ export default class StockTicker extends Component {
             }
         ];
         this.sortBy = { fieldName: 'Symbol', direction: 0, updateCount: 0 };
-        this.exchanges = {
-            '10': 'HOSE',
-            '02': 'HNX',
-            '03': 'UPCOM',
-            'HOSE': '10',
-            'HNX': '02',
-            'UPCOM': '03'
-        };
+        this.exchanges = this.config['exchanges'];
         this.filter = {
             top30: true,
             all: null,
@@ -408,8 +403,7 @@ export default class StockTicker extends Component {
         try {
             let response = await this.dataSvcRequest(dataServiceApi.snapshot.path, {
                 method: dataServiceApi.snapshot.method,
-                params: stdParams,
-                paramsSerializer: params => (new URLSearchParams(params)).toString()
+                params: stdParams
             });
             let snapshots = response.data;
             let stockObjs = snapshots;
@@ -792,8 +786,6 @@ export default class StockTicker extends Component {
         }
     }
 
-
-
     async addSymbolWatchlist(symbol) {
         const { activeTabKey, activeDropdownKey } = this.state;
         let { stockObjs } = this.state;
@@ -1001,9 +993,19 @@ export default class StockTicker extends Component {
         this.setState({ stockObjs });
     }
 
+    handleCloseModal() {
+        this.setState({ chartStock: {}, isShowChart: false });
+    }
+
+    handleOpenModal(event, snapshot) {
+        event.preventDefault();
+        let chartStock = this.stockInfos?.find(si => si['symbol'] == snapshot['Symbol'] && si['exchange_code'] == snapshot['ExchangeCode']);
+        this.setState({ chartStock, isShowChart: true });
+    }
+
     renderStockTable(stockObjs) {
         const that = this;
-        const { activeTabKey } = this.state;
+        const { activeTabKey, chartStock, isShowChart } = this.state;
         return (
             <div>
                 <div className="table-responsive table-fix-head">
@@ -1047,7 +1049,7 @@ export default class StockTicker extends Component {
                                     <tr key={s.Symbol} id={s.Symbol} className="align-midle">
                                         <td>
                                             <div className="symbol clear-fix">
-                                                <Link className="symbol-link" to={`/stock-chart?code=${s.Symbol}`} target="_blank">{s.Symbol}</Link>
+                                                <a className="symbol-link link-primary" onClick={e => that.handleOpenModal(e, s)}>{s.Symbol}</a>
                                                 <input name="exchangeCode" type="hidden" value={s.ExchangeCode}></input>
                                                 {activeTabKey == 'watchlist' &&
                                                     (
@@ -1076,6 +1078,9 @@ export default class StockTicker extends Component {
                         </tbody>
                     </table>
                 </div>
+                {isShowChart ?
+                    (<StockChart config={this.props.config} stock={chartStock} handleCloseModal={this.handleCloseModal.bind(this)}/>)
+                    : (<></>)}
             </div>
         );
     }
@@ -1165,6 +1170,7 @@ export default class StockTicker extends Component {
                         onKeyDown={e => that.onEnterEditWatchlist(e, watchlist['id'])}
                         onClick={this.onClickEditWatchlist.bind(this)}
                         onBlur={e => this.turnOffEditWatchlistMode(e, watchlist)}
+                        autoFocus
                     />
                 </>
             )

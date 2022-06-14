@@ -1,9 +1,16 @@
 import React, { Component } from 'react';
+import { Modal } from 'react-bootstrap';
 
 export default class AlertSettings extends Component {
 
     constructor(props) {
         super(props);
+
+        this.handleCloseModal = this.props.handleCloseModal;
+
+        this.state = {
+            isShowModal: false
+        };
 
         this.alertOptionChoices = {
             "highestInRange": {
@@ -19,7 +26,7 @@ export default class AlertSettings extends Component {
                 desc: "Dựa trên tín hiệu kỹ thuật"
             }
         };
-       
+
         this.PriceTrend = {
             '1': {
                 value: 1,
@@ -57,9 +64,9 @@ export default class AlertSettings extends Component {
             }
         }
 
-        this.AvailStockCodes = ["FLC","HAG","HSG","MBB","PDR","PVD","SHB","VIC","VND","ASP","FTS","GVR","HAG","HCM","HDC","SSI","TCB","TGG","VOS","VTO"];
+        this.AvailStockCodes = ["FLC", "HAG", "HSG", "MBB", "PDR", "PVD", "SHB", "VIC", "VND", "ASP", "FTS", "GVR", "HAG", "HCM", "HDC", "SSI", "TCB", "TGG", "VOS", "VTO"];
 
-        this.state = { 
+        this.state = {
             alertOptions: {
                 // "highestInRange": {
                 //     "fromDate": "2020-06-22",
@@ -82,14 +89,14 @@ export default class AlertSettings extends Component {
             try {
                 this.state.alertOptions = JSON.parse(localAlertOptions);
             } catch (e) {
-               
+
             }
         }
     }
 
     formatDate(date) {
         let year = date.getFullYear();
-        let month = date.getMonth()+1;
+        let month = date.getMonth() + 1;
         let day = date.getDate();
         if (!year) {
             let currentDate = new Date();
@@ -103,11 +110,15 @@ export default class AlertSettings extends Component {
             day = 1;
         }
 
-        return `${year}-${month < 10 ? '0'+month : month}-${day < 10 ? '0'+day : day}`;
+        return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
     }
 
     componentDidMount() {
-        
+        let { isShowModal } = this.state;
+
+        isShowModal = this.props.isShowModal;
+
+        this.setState({ isShowModal });
     }
 
     handleChangeOption(event, alertOptionKeyOld) {
@@ -120,13 +131,13 @@ export default class AlertSettings extends Component {
         if (alertOptionKeyOld != alertOptionKeyNew) {
             Object.defineProperty(alertOptions, alertOptionKeyNew, Object.getOwnPropertyDescriptor(alertOptions, alertOptionKeyOld));
             delete alertOptions[alertOptionKeyOld];
-            switch(alertOptionKeyNew) {
+            switch (alertOptionKeyNew) {
                 case "highestInRange":
                 case "lowestInRange":
-                    alertOptions[alertOptionKeyNew] = {"toDate": this.formatDate(new Date())};
+                    alertOptions[alertOptionKeyNew] = { "toDate": this.formatDate(new Date()) };
                     break;
                 case "TASignals":
-                    alertOptions[alertOptionKeyNew] = {sma:0};
+                    alertOptions[alertOptionKeyNew] = { sma: 0 };
                     break;
                 case "priceTrendPattern":
                     alertOptions[alertOptionKeyNew] = [];
@@ -136,15 +147,15 @@ export default class AlertSettings extends Component {
                     break;
 
             }
-            
+
         }
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     handleChangeTrend(event, idx) {
         let alertOptions = this.state.alertOptions;
         alertOptions["priceTrendPattern"][idx] = event.target.value;
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     handleChangePriceTrendDay(event) {
@@ -153,31 +164,31 @@ export default class AlertSettings extends Component {
             alertOptions["priceTrendPattern"] = Array(parseInt(event.target.value)).fill(-2);
         } else {
         }
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     handleChangeRangeHighestToDate(event) {
         let alertOptions = this.state.alertOptions;
         alertOptions["highestInRange"]["toDate"] = event.target.value;
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     handleChangeRangeHighestFromDate(event) {
         let alertOptions = this.state.alertOptions;
         alertOptions["highestInRange"]["fromDate"] = event.target.value;
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     handleChangeRangeLowestToDate(event) {
         let alertOptions = this.state.alertOptions;
         alertOptions["lowestInRange"]["toDate"] = event.target.value;
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     handleChangeRangeLowestFromDate(event) {
         let alertOptions = this.state.alertOptions;
         alertOptions["lowestInRange"]["fromDate"] = event.target.value;
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     handleChangeTA(event, taKeyOld) {
@@ -186,7 +197,7 @@ export default class AlertSettings extends Component {
         if (taKeyOld != taKeyNew) {
             Object.defineProperty(alertOptions, taKeyNew, Object.getOwnPropertyDescriptor(alertOptions, taKeyOld));
             delete alertOptions[taKeyOld];
-            switch(taKeyNew) {
+            switch (taKeyNew) {
                 case "sma":
                     alertOptions[taKeyNew] = 10;
                 default:
@@ -194,16 +205,16 @@ export default class AlertSettings extends Component {
                     break;
 
             }
-            
+
         }
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     handleChangeTACondition(event, taKey, taConditionOld) {
         let alertOptions = this.state.alertOptions;
         let taConditionNew = event.target.value;
         if (taConditionOld != taConditionNew) {
-            switch(taKey) {
+            switch (taKey) {
                 case "sma":
                     alertOptions["TASignals"][taKey] = taConditionNew;
                 default:
@@ -211,9 +222,9 @@ export default class AlertSettings extends Component {
                     break;
 
             }
-            
+
         }
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     renderTAParameters(taKey) {
@@ -230,7 +241,7 @@ export default class AlertSettings extends Component {
         }
     }
 
-    renderAlertOptionInput (alertOptionKey, alertOptionValue) {
+    renderAlertOptionInput(alertOptionKey, alertOptionValue) {
         console.log(alertOptionValue);
         switch (alertOptionKey) {
             case 'highestInRange':
@@ -242,7 +253,7 @@ export default class AlertSettings extends Component {
                             })}
                         </select>
                         <label> tính ngược từ ngày </label>
-                        <input type="date" value={alertOptionValue.toDate ? alertOptionValue.toDate : this.formatDate(new Date())} onChange={this.handleChangeRangeHighestToDate.bind(this)}/>
+                        <input type="date" value={alertOptionValue.toDate ? alertOptionValue.toDate : this.formatDate(new Date())} onChange={this.handleChangeRangeHighestToDate.bind(this)} />
                         <label> trở về </label>
                         <input type="text" pattern="[0-9]*" value={alertOptionValue.fromDate ?? "0"} onChange={this.handleChangeRangeHighestFromDate.bind(this)} />
                         <label> ngày trước</label>
@@ -257,7 +268,7 @@ export default class AlertSettings extends Component {
                             })}
                         </select>
                         <label> tính ngược từ ngày </label>
-                        <input type="date" value={alertOptionValue.toDate ?? this.formatDate(new Date())} onChange={this.handleChangeRangeLowestToDate.bind(this)}/>
+                        <input type="date" value={alertOptionValue.toDate ?? this.formatDate(new Date())} onChange={this.handleChangeRangeLowestToDate.bind(this)} />
                         <label> trở về </label>
                         <input type="text" pattern="[0-9]*" value={alertOptionValue.fromDate ?? "0"} onChange={this.handleChangeRangeLowestFromDate.bind(this)} />
                         <label> ngày trước</label>
@@ -298,17 +309,17 @@ export default class AlertSettings extends Component {
                                     </select>
                                     <select value={taKey} onChange={(e) => this.handleChangeTA(e, taKey)}>
                                         {Object.keys(this.TechnicalIndicator).map(ta => {
-                                                        return (<option value={ta} key={ta}>{this.TechnicalIndicator[ta].desc}</option>)
+                                            return (<option value={ta} key={ta}>{this.TechnicalIndicator[ta].desc}</option>)
                                         })}
                                     </select>
                                     <>{this.renderTAParameters(taKey)}</>
                                     <select value={alertOptionValue[taKey]} onChange={(e) => this.handleChangeTACondition(e, taKey, alertOptionValue[taKey])}>
                                         {Object.keys(this.TASignalCondition).map(taCond => {
-                                                return (<option value={taCond} key={taCond}>{this.TASignalCondition[taCond].desc}</option>)
+                                            return (<option value={taCond} key={taCond}>{this.TASignalCondition[taCond].desc}</option>)
                                         })}
                                     </select>
                                 </>
-                            );    
+                            );
                         })}
                     </>
                 );
@@ -329,15 +340,15 @@ export default class AlertSettings extends Component {
     addCondition(event) {
         event.preventDefault();
         let alertOptions = this.state.alertOptions;
-        
-        alertOptions['option'+(Object.keys(alertOptions).length+1)] = null;
-        this.setState({alertOptions});
+
+        alertOptions['option' + (Object.keys(alertOptions).length + 1)] = null;
+        this.setState({ alertOptions });
     }
 
     submitForm(event) {
         event.preventDefault();
         let alertOptions = this.state.alertOptions;
-        
+
         console.log(alertOptions);
         localStorage.setItem("alertOptions", JSON.stringify(alertOptions));
     }
@@ -349,18 +360,20 @@ export default class AlertSettings extends Component {
         if (idx !== -1) {
             alertOptions["stockCodes"].splice(idx, 1);
         }
-        this.setState({alertOptions});
+        this.setState({ alertOptions });
     }
 
     resetCondition(event) {
         event.preventDefault();
         let alertOptions = this.state.alertOptions;
-        alertOptions = {"stockCodes": alertOptions["stockCodes"]};
-        this.setState({alertOptions});
+        alertOptions = { "stockCodes": alertOptions["stockCodes"] };
+        this.setState({ alertOptions });
     }
 
     render() {
-        return (
+        const { isShowModal } = this.state;
+
+        let content = (
             <form onSubmit={this.submitForm.bind(this)}>
                 <div>
                     {Object.keys(this.state.alertOptions).map(alertOptionKey => {
@@ -379,9 +392,9 @@ export default class AlertSettings extends Component {
                         {this.AvailStockCodes.map(stockCode => {
                             return (
                                 <>
-                                <input type="checkbox" checked={this.state.alertOptions["stockCodes"].includes(stockCode)} value={stockCode} onChange={this.handleChangeStockCode.bind(this)}/>
-                                <label>{stockCode}</label>
-                                <br></br>
+                                    <input type="checkbox" checked={this.state.alertOptions["stockCodes"].includes(stockCode)} value={stockCode} onChange={this.handleChangeStockCode.bind(this)} />
+                                    <label>{stockCode}</label>
+                                    <br></br>
                                 </>
                             );
                         })}
@@ -392,9 +405,32 @@ export default class AlertSettings extends Component {
                     <button onClick={this.resetCondition.bind(this)}>Reset điều kiện</button>
                 </div>
                 <div>
-                    <input type="submit" value="Lưu thiết lập"/>
+                    <input type="submit" value="Lưu thiết lập" />
                 </div>
             </form>
         );
+
+        if (isShowModal) {
+            return (
+                <Modal show onHide={this.handleCloseModal} size='lg' centered>
+                    <Modal.Header closeButton>
+                        <Modal.Title>
+                            <div>
+                                Quản lý cảnh báo
+                            </div>
+                        </Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        {content}
+                    </Modal.Body>
+                </Modal>
+            );
+        } else {
+            return (
+                <>
+                   {content}
+                </>
+            );
+        }
     }
 }

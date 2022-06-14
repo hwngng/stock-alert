@@ -10,6 +10,10 @@ const dataServiceApi = {
 	realtime: {
 		method: 'ws',
 		path: '/realtime'
+	},
+	history: {
+		method: 'get',
+		path: '/stock/history'
 	}
 }
 
