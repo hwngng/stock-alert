@@ -3,6 +3,7 @@ import React, { Component } from 'react'
 import userApi from '../../common/api/userApi';
 import '../auth.css';
 import { Modal, Button } from 'react-bootstrap';
+import WebAPI from '../../common/request/WebAPI';
 
 export default class SignUp extends Component {
   constructor(props) {

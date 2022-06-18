@@ -480,3 +480,47 @@ h1 {
 .sortable {
   cursor: url("sort.png"), ns-resize;
 }
+
+/*
+* Stock chart
+*
+*/
+
+.pattern-select label {
+  margin-left: 10px;
+  display: inline;
+}
+
+
+/* .stockchart {
+  max-width: 100% !important;
+  max-height: 100% !important;
+} */
+
+.chart-modal-width {
+  width: 90vw;    /* Occupy the 90% of the screen width */
+  max-width: 90vw;
+}
+
+.chart-modal-height {
+  height: 90vh;    /* Occupy the 90% of the screen height */
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.modal-symbol {
+  font-size: 1.3rem;
+  display: inline;
+  margin-left: 15px;
+}
+
+.modal-company-name {
+  font-size: 1.3rem;
+  display: inline;
+}
+
+.chart-new-tab {
+  margin-left: 10px;
+  font-size: small;
+  vertical-align: middle;
+}

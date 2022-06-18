@@ -32,8 +32,8 @@ class OHLCTooltip extends Component {
 
 		const currentItem = displayValuesFor(this.props, moreProps);
 
-		let displayDate, open, high, low, close, volume, percent;
-		displayDate = open = high = low = close = volume = percent = displayTexts.na;
+		let displayDate, open, high, low, close, volume, percent, change, amp;
+		displayDate = open = high = low = close = volume = percent = change = amp = displayTexts.na;
 
 		if (isDefined(currentItem) && isDefined(accessor(currentItem))) {
 			const item = accessor(currentItem);
@@ -45,6 +45,8 @@ class OHLCTooltip extends Component {
 			low = ohlcFormat(item.low);
 			close = ohlcFormat(item.close);
 			percent = percentFormat((item.close - item.open) / item.open);
+			change = calcPercentChange(item.open, item.close),
+			amp = calcPercentChange(item.low, item.high)
 		}
 
 		const { origin: originProp } = this.props;
@@ -59,6 +61,8 @@ class OHLCTooltip extends Component {
 			close,
 			percent,
 			volume,
+			change,
+			amp,
 			x,
 			y
 		};
@@ -100,8 +104,21 @@ const displayTextsDefault = {
 	l: " L: ",
 	c: " C: ",
 	v: " Vol: ",
+	p: " Change: ",
+	a: " Amplitude: ",
 	na: "n/a"
 };
+
+function calcPercentChange(before, after) {
+	let fbefore = parseFloat(before);
+	let fafter = parseFloat(after);
+
+	if (isNaN(fbefore) || isNaN(fafter)) {
+		return '';
+	} else {
+		return Math.round((fafter - fbefore) * 100 / fbefore * 100) / 100;
+	}
+}
 
 OHLCTooltip.defaultProps = {
 	accessor: d => {
@@ -111,7 +128,7 @@ OHLCTooltip.defaultProps = {
 			high: d.high,
 			low: d.low,
 			close: d.close,
-			volume: d.volume
+			volume: d.volume,
 		};
 	},
 	xDisplayFormat: timeFormat("%Y-%m-%d"),
@@ -145,6 +162,8 @@ function defaultDisplay(props, moreProps, itemsToDisplay) {
 		low,
 		close,
 		volume,
+		change,
+		amp,
 		x,
 		y
 	} = itemsToDisplay;
@@ -176,6 +195,10 @@ function defaultDisplay(props, moreProps, itemsToDisplay) {
 				<tspan key="value_C" fill={textFill}>{close}</tspan>
 				<ToolTipTSpanLabel fill={labelFill} key="label_Vol">{displayTexts.v}</ToolTipTSpanLabel>
 				<tspan key="value_Vol" fill={textFill}>{volume}</tspan>
+				<ToolTipTSpanLabel fill={labelFill} key="label_Change">{displayTexts.p}</ToolTipTSpanLabel>
+				<tspan key="value_Change" fill={textFill}>{`${change}%`}</tspan>
+				<ToolTipTSpanLabel fill={labelFill} key="label_Amp">{displayTexts.a}</ToolTipTSpanLabel>
+				<tspan key="value_Amp" fill={textFill}>{`${amp}%`}</tspan>
 			</ToolTipText>
 		</g>
 	);

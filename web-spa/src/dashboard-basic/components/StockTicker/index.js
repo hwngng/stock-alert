@@ -10,6 +10,7 @@ import userApi from '../../../common/api/userApi';
 import WebAPIAuth from '../../../common/request/WebAPIAuth';
 import DataService from '../../../common/request/DataService';
 import StockChart from '../StockChart';
+import latinize from 'latinize';
 
 export default class StockTicker extends Component {
     constructor(props) {
@@ -327,7 +328,8 @@ export default class StockTicker extends Component {
 
     makeSearchHint(stockInfos) {
         let stockInfosWithHint = stockInfos.map(si => {
-            si.hint = si['symbol'] + ' - ' + (si['short_name'] ?? si['name']) + ' - ' + this.exchanges[si['exchange_code']];
+            si.full = si['symbol'] + ' - ' + (si['short_name'] ?? si['name']) + ' - ' + this.exchanges[si['exchange_code']];
+            si.hint = (si['symbol'] + ' ' + latinize(si['short_name'] ?? si['name']) + ' ' + this.exchanges[si['exchange_code']]).toLowerCase();
             return si;
         });
 
@@ -863,8 +865,8 @@ export default class StockTicker extends Component {
         const stockInfos = this.stockInfos;
 
         return inputLength === 0 || !stockInfos ? [] : stockInfos.filter(si =>
-            si['symbol'].toLowerCase().slice(0, inputLength) === inputValue
-            || (si['short_name'] ? si['short_name'].toLowerCase().indexOf(inputValue) >= 0 : si['name'].toLowerCase().indexOf(inputValue) >= 0)
+            (inputLength <= 4 && si['hint'].slice(0, inputLength) === inputValue)
+            || (si['hint']?.slice(3)?.indexOf(inputValue) >= 0)
         );
     }
 
@@ -873,7 +875,7 @@ export default class StockTicker extends Component {
     renderSuggestion(suggestion) {
         return (
             <>
-                {suggestion['hint']}
+                {suggestion['full']}
             </>
         );
     }
@@ -899,6 +901,7 @@ export default class StockTicker extends Component {
     onEnterSearch(event) {
         if (event.keyCode === 13) { // Enter
             this.handleSearchSymbol(this.state.searchedSymbol.toUpperCase());
+            this.setState({ searchedSymbol: '' });
         }
     }
 
@@ -910,6 +913,7 @@ export default class StockTicker extends Component {
 
     onSuggestionSelected(event, { suggestion, suggestionValue }) {
         this.handleSearchSymbol(suggestionValue);
+        this.setState({ searchedSymbol: '' });
     }
 
     onChangeWatchlistTxt(event) {

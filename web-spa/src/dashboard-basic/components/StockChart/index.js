@@ -9,11 +9,13 @@ import morningStar from '../../candle-patterns/morningStar';
 import eveningStar from '../../candle-patterns/eveningStar';
 import bullishEngulfing from '../../candle-patterns/bullishEngulfing';
 import bearishEngulfing from '../../candle-patterns/bearishEngulfing';
-import threeWhiteSoliders from '../../candle-patterns/threeWhiteSoliders';
+import threeWhiteSoldiers from '../../candle-patterns/threeWhiteSoldiers';
 import threeBlackCrows from '../../candle-patterns/threeBlackCrows';
 import DataService from '../../../common/request/DataService';
 import dataServiceApi from '../../../common/api/dataServiceApi';
-import { Modal } from 'react-bootstrap';
+import { Modal, Form } from 'react-bootstrap';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
 
 export default class StockChart extends Component {
     constructor(props) {
@@ -27,11 +29,63 @@ export default class StockChart extends Component {
             type: 'hybrid',
             highlightCandles: [],
             isShowModal: false,
+            highlightOptions: {},
+            selectValue: ''
         };
 
         this.parseDate = timeParse("%Y%m%d");
         this.dataSvcRequest = DataService(this.config['dataServiceHost']);
         this.exchanges = this.config['exchanges'];
+        this.patternMap = {
+            hammerCandle: {
+                titleEn: 'Hammer',
+                titleVi: '',
+                stroke: '',
+                fn: hammerCandle
+            },
+            invertedHammerCandle: {
+                titleEn: 'Inverted Hammer',
+                titleVi: '',
+                stroke: '',
+                fn: invertedHammerCandle
+            },
+            morningStar: {
+                titleEn: 'Morning Star',
+                titleVi: '',
+                stroke: '',
+                fn: morningStar
+            },
+            eveningStar: {
+                titleEn: 'Evening Star',
+                titleVi: '',
+                stroke: '',
+                fn: eveningStar
+            },
+            bullishEngulfing: {
+                titleEn: 'Bullish Engulfing',
+                titleVi: '',
+                stroke: '',
+                fn: bullishEngulfing
+            },
+            bearishEngulfing: {
+                titleEn: 'Bearish Engulfing',
+                titleVi: '',
+                stroke: '',
+                fn: bearishEngulfing
+            },
+            threeWhiteSoldiers: {
+                titleEn: 'Three White Soldiers',
+                titleVi: '',
+                stroke: '',
+                fn: threeWhiteSoldiers
+            },
+            threeBlackCrows: {
+                titleEn: 'Three Black Crows',
+                titleVi: '',
+                stroke: '',
+                fn: threeBlackCrows
+            }
+        }
     }
 
     loadChartCode() {
@@ -132,7 +186,7 @@ export default class StockChart extends Component {
     onThreeWhiteSolidersSelect(event) {
         const { plotData } = this.state;
         let { highlightCandles } = this.state;
-        highlightCandles = threeWhiteSoliders(plotData);
+        highlightCandles = threeWhiteSoldiers(plotData);
         this.setState({ highlightCandles })
     }
 
@@ -145,6 +199,27 @@ export default class StockChart extends Component {
 
     handleCloseModalChild(event) {
         this.handleCloseModal();
+    }
+
+    handleChangeSelect(event) {
+        this.setState({})
+    }
+
+    renderPatternSelect() {
+        const that = this;
+        const { highlightOptions } = this.state;
+        let options = Object.keys(this.patternMap)?.map(pattern => {
+            return (
+                <option value={pattern}>{`Mẫu hình ${that.patternMap[pattern]['titleEn']}`}</option>
+            );
+        });
+
+        return (
+            <Form.Control as="select" aria-label="Default select example" onChange={e => that.handleChangeSelect(e)}>
+                <option>Chọn mẫu hình nến</option>
+                {options}
+            </Form.Control>
+        );
     }
 
     render() {
@@ -162,41 +237,47 @@ export default class StockChart extends Component {
         } else {
             content = (
                 <>
-                    <div>
-                        <input type="radio" onChange={this.onHammerSelect.bind(this)} name="pattern" />
-                        <label style={{ marginLeft: '10px' }}>Mẫu hình Hammer</label>
-                    </div>
-                    <div>
-                        <input type="radio" onChange={this.onInvertedHammerSelect.bind(this)} name="pattern" />
-                        <label style={{ marginLeft: '10px' }}>Mẫu hình Inverted Hammer</label>
-                    </div>
-                    <div>
-                        <input type="radio" onChange={this.onMorningStarSelect.bind(this)} name="pattern" />
-                        <label style={{ marginLeft: '10px' }}>Mẫu hình Morning Star</label>
-                    </div>
-                    <div>
-                        <input type="radio" onChange={this.onEveningStarSelect.bind(this)} name="pattern" />
-                        <label style={{ marginLeft: '10px' }}>Mẫu hình Evening Star</label>
-                    </div>
-                    <div>
-                        <input type="radio" onChange={this.onBullishEngulfingSelect.bind(this)} name="pattern" />
-                        <label style={{ marginLeft: '10px' }}>Mẫu hình Bullish Engulfing</label>
-                    </div>
-                    <div>
-                        <input type="radio" onChange={this.onBearishEngulfingSelect.bind(this)} name="pattern" />
-                        <label style={{ marginLeft: '10px' }}>Mẫu hình Bearish Engulfing</label>
-                    </div>
-                    <div>
-                        <input type="radio" onChange={this.onThreeWhiteSolidersSelect.bind(this)} name="pattern" />
-                        <label style={{ marginLeft: '10px' }}>Mẫu hình Three White Soliders</label>
-                    </div>
-                    <div>
-                        <input type="radio" onChange={this.onThreeBlackCrowsSelect.bind(this)} name="pattern" />
-                        <label style={{ marginLeft: '10px' }}>Mẫu hình Three Black Crows</label>
-                    </div>
-                    <hr></hr>
-                    <div id="chart" className="react-stockchart">
-                        <CandleStickChartHighlightCandle type={type} code={stockInfo['symbol']} exchangeTitle={this.exchanges[stockInfo['exchange_code']]} data={plotData} highlightCandle={highlightCandles} />
+                    <div className="container-xxl pattern-select">
+                        <div class="row">
+                            <div id="chart" className="stockchart col-10">
+                                <CandleStickChartHighlightCandle type={type} code={stockInfo['symbol']} exchangeTitle={this.exchanges[stockInfo['exchange_code']]} data={plotData} highlightCandle={highlightCandles} />
+                            </div>
+                            <div className="highlight col-2">
+                                <div className="">
+                                    <input type="radio" onChange={this.onHammerSelect.bind(this)} name="pattern" />
+                                    <label>Mẫu hình Hammer</label>
+                                </div>
+                                <div className="">
+                                    <input type="radio" onChange={this.onInvertedHammerSelect.bind(this)} name="pattern" />
+                                    <label>Mẫu hình Inverted Hammer</label>
+                                </div>
+                                <div className="">
+                                    <input type="radio" onChange={this.onMorningStarSelect.bind(this)} name="pattern" />
+                                    <label>Mẫu hình Morning Star</label>
+                                </div>
+                                <div className=" text-wrap">
+                                    <input type="radio" onChange={this.onEveningStarSelect.bind(this)} name="pattern" />
+                                    <label>Mẫu hình Evening Star</label>
+                                </div>
+                                <div className=" text-wrap">
+                                    <input type="radio" onChange={this.onBullishEngulfingSelect.bind(this)} name="pattern" />
+                                    <label>Mẫu hình Bullish Engulfing</label>
+                                </div>
+                                <div className=" text-wrap">
+                                    <input type="radio" onChange={this.onBearishEngulfingSelect.bind(this)} name="pattern" />
+                                    <label>Mẫu hình Bearish Engulfing</label>
+                                </div>
+                                <div className=" text-wrap">
+                                    <input type="radio" onChange={this.onThreeWhiteSolidersSelect.bind(this)} name="pattern" />
+                                    <label>Mẫu hình Three White Soliders</label>
+                                </div>
+                                <div className=" text-wrap">
+                                    <input type="radio" onChange={this.onThreeBlackCrowsSelect.bind(this)} name="pattern" />
+                                    <label>Mẫu hình Three Black Crows</label>
+                                </div>
+                                {this.renderPatternSelect()}
+                            </div>
+                        </div>
                     </div>
                 </>
             );
@@ -204,16 +285,19 @@ export default class StockChart extends Component {
 
         if (isShowModal) {
             return (
-                <Modal show onHide={this.handleCloseModal} size='lg' centered>
+                <Modal show onHide={this.handleCloseModal} dialogClassName="chart-modal-width" contentClassName="chart-modal-height" centered>
                     <Modal.Header closeButton>
                         <Modal.Title>
                             <div>
-                                <div>
+                                <div className="modal-company-name">
                                     {stockInfo['name']}
                                 </div>
-                                <div>
-                                    {`${stockInfo['symbol']}:${this.exchanges[stockInfo['exchange_code']]}`}
+                                <div className="modal-symbol">
+                                    ({`${stockInfo['symbol']}:${this.exchanges[stockInfo['exchange_code']]}`})
                                 </div>
+                                <a href={`/stock-chart?symbol=${stockInfo['symbol']}&exchangeCode=${stockInfo['exchange_code']}`} target="_blank">
+                                    <FontAwesomeIcon className="chart-new-tab" icon={faUpRightFromSquare} />
+                                </a>
                             </div>
                         </Modal.Title>
                     </Modal.Header>
