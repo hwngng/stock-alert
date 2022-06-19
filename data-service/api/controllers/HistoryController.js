@@ -2,6 +2,7 @@
 const error = require('../../models/error');
 const helper = require('../../utils/helper');
 const format = require('pg-format');
+const axios = require('axios');
 
 module.exports = {
 	get: (req, res) => {
@@ -53,5 +54,52 @@ module.exports = {
 				res.json(results.rows);
 			});
 		});	
+	},
+	getSingleWithCurrent: (req, res) => {
+		let code = req.query.code;
+		let fromTimestamp = req.query.epoch_sec_from;
+		let toTimestamp = req.query.epoch_sec_to;
+
+		if (!code) {
+			error.err_code = 400;
+			error.err_msg = 'Lack of required input';
+			res.json(error);
+			return;
+		}
+
+		fromTimestamp = fromTimestamp ? fromTimestamp : 915148800;
+		toTimestamp = toTimestamp ? toTimestamp : Date()/1000;
+
+		let params = {
+			symbol: code,
+			from: fromTimestamp,
+			to: toTimestamp
+		};
+		params = helper.dropFalsyFields(params);
+		axios.get('https://dchart-api.vndirect.com.vn/dchart/history', {
+			params: params
+		})
+		.then(function (response) {
+			let ohlcv = response.data;
+			if (!ohlcv || ohlcv['s'] != 'ok') {
+				console.log(response.data);
+				res.json([]);
+				return;
+			}
+			let ohlcvArr = ohlcv['t'].map((t, idx) => ({
+				symbol: code,
+				dt: (new Date(t*1000)).toISOString(),
+				open: ohlcv['o'][idx],
+				high: ohlcv['h'][idx],
+				low: ohlcv['l'][idx],
+				close: ohlcv['c'][idx],
+				volume: ohlcv['v'][idx]
+			}));
+			res.json(ohlcvArr);
+		})
+		.catch(function (err) {
+			console.log(err);
+			res.json([]);
+		});
 	}
 }

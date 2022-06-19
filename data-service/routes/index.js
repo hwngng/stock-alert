@@ -18,4 +18,7 @@ module.exports = function (app) {
 
   app.route('/stock/info')
     .get(infoCtrl.get);
+
+  app.route('/stock/history/withCurr')
+    .get(historyCtrl.getSingleWithCurrent);
 };
