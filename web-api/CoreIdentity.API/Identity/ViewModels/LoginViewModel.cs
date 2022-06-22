@@ -2,17 +2,17 @@
 
 namespace CoreIdentity.API.Identity.ViewModels
 {
-    public class LoginViewModel
-    {
-        public string UserName { get; set; }
+	public class LoginViewModel
+	{
+		public string UserName { get; set; }
 
-        [Required]
-        [EmailAddress]
-        [DataType(DataType.EmailAddress)]
-        public string Email { get; set; }
+		[EmailAddress]
+		[DataType(DataType.EmailAddress)]
+		public string Email { get; set; }
 
-        [Required]
-        [DataType(DataType.Password)]
-        public string Password { get; set; }
-    }
+		[DataType(DataType.Password)]
+		public string Password { get; set; }
+
+		public bool IsRemember { get; set; }
+	}
 }

@@ -31,6 +31,11 @@ h1 {
   justify-content: center;
 }
 
+.form-group .required:after {
+  content: " (*)";
+  color: red;
+}
+
 /*
  * Sidebar
  */
@@ -97,7 +102,7 @@ h1 {
 }
 
 .react-autosuggest__container {
-  position: relative; 
+  position: relative;
 }
 
 .react-autosuggest__input {
@@ -134,7 +139,7 @@ h1 {
   border-bottom-right-radius: 4px;
   overflow-y: auto;
   z-index: 2;
-  
+
 }
 
 .react-autosuggest__suggestions-list {
@@ -152,6 +157,10 @@ h1 {
   background-color: #ddd;
 }
 
+.portfolio-nav .dropdown-menu {
+  min-width: 9rem;
+}
+
 .add-watchlist-nav {
   padding: .25rem 1.5rem;
 }
@@ -163,6 +172,7 @@ h1 {
   margin-left: 10px;
   align-self: center;
   font-size: 0.9rem;
+  border: none;
 }
 
 .add-watchlist-inp {
@@ -171,6 +181,7 @@ h1 {
 
 .add-watchlist-txt {
   height: 2rem;
+  border-radius: 4px !important;
 }
 
 .search-nav {
@@ -181,7 +192,7 @@ h1 {
   width: 5rem;
 }
 
-.all-nav a {
+.all-nav .dropdown-toggle {
   vertical-align: middle !important;
   text-align: center !important;
 }
@@ -190,7 +201,7 @@ h1 {
   width: 5.5rem;
 }
 
-.hose-nav a {
+.hose-nav .dropdown-toggle {
   vertical-align: middle !important;
   text-align: center !important;
 }
@@ -199,7 +210,7 @@ h1 {
   width: 5.7rem;
 }
 
-.hnx-nav a {
+.hnx-nav .dropdown-toggle {
   vertical-align: middle !important;
   text-align: center !important;
 }
@@ -208,14 +219,93 @@ h1 {
   width: 6.6rem;
 }
 
-.upcom-nav a {
+.upcom-nav .dropdown-toggle {
   vertical-align: middle !important;
   text-align: center !important;
+}
+
+.watchlist-control {
+  margin-left: auto;
+  display: flex;
+  justify-content: right;
+  align-items: center;
+}
+
+.watchlist-control-btn {
+  height: 1.4rem;
+  width: 1.4rem;
+  padding: 0;
+  font-size: 0.9rem;
+  background-color: transparent;
+  color: black;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 3px;
+}
+
+.watchlist-control-btn.remove:hover {
+  background-color: #dc3545;
+}
+
+.watchlist-control-btn:hover {
+  background-color: #3ac7dd;
+}
+
+.watchlist-item {
+  display: flex;
+  align-items: center;
+}
+
+.edit-watchlist-txt {
+  height: 1.9rem !important;
+  padding-left: 6px !important;
 }
 
 /*
  * Price table
  */
+
+ .price-table tr:hover {
+   background-color: rgba(133, 239, 243, 0.2) !important;
+ }
+
+.price-table .symbol {
+  width: 4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.symbol-link {
+  cursor: pointer;
+}
+
+.symbol-control-btn {
+  height: 1.4rem;
+  width: 1.4rem;
+  padding: 0;
+  font-size: 1rem;
+  background-color: transparent;
+  color: black;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 10px;
+  display: none;
+}
+
+.symbol-control-btn.remove:hover {
+  background-color: transparent;
+  color: #dc3545;
+}
+
+.price-table tr:hover .symbol-control-btn {
+  display: block;
+}
+
 .highlight-down {
   border-radius: 3px;
   animation: transition-down 1100ms ease-out;
@@ -235,28 +325,34 @@ h1 {
   0% {
     background-color: #dc3545;
   }
-  100% {
-    background-color: white;
-  }
-}
-@keyframes transition-up {
-  0% {
-    background-color: #28a745;
-  }
-  100% {
-    background-color: white;
-  }
-}
-@keyframes transition-nochange {
-  0% {
-    background-color: #ffc107;
-  }
+
   100% {
     background-color: white;
   }
 }
 
-.align-middle th, .align-middle td {
+@keyframes transition-up {
+  0% {
+    background-color: #28a745;
+  }
+
+  100% {
+    background-color: white;
+  }
+}
+
+@keyframes transition-nochange {
+  0% {
+    background-color: #ffc107;
+  }
+
+  100% {
+    background-color: white;
+  }
+}
+
+.align-middle th,
+.align-middle td {
   vertical-align: middle !important;
   text-align: center !important;
 }
@@ -283,7 +379,8 @@ h1 {
   background-color: white;
 }
 
-.table-fix-head th, .table-fix-head td {
+.table-fix-head th,
+.table-fix-head td {
   border-top: 0;
   border-left: 0;
 }
@@ -309,7 +406,7 @@ h1 {
   color: #ffc107 !important;
 }
 
-.table-striped>tbody>tr:nth-child(odd)>td, 
+.table-striped>tbody>tr:nth-child(odd)>td,
 .table-striped>tbody>tr:nth-child(odd)>th {
   background-color: rgba(0, 0, 0, 0.001);
 }
@@ -321,6 +418,15 @@ h1 {
 .alert-setting {
   font-size: larger;
   text-align: center;
+  width: 2rem;
+  height: 2rem;
+  line-height: 2rem;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.alert-setting:hover {
+  color: rgba(0, 0, 0, 0.6);
 }
 
 
@@ -328,9 +434,9 @@ h1 {
   font-size: 0.9em;
 }
 
-.alert-table>thead {
-  vertical-align: middle;
-  font-size: medium;
+.alert-table th {
+  vertical-align: middle !important;
+  font-size: 1.1rem;
 }
 
 .alert-symbol {
@@ -373,4 +479,48 @@ h1 {
 
 .sortable {
   cursor: url("sort.png"), ns-resize;
+}
+
+/*
+* Stock chart
+*
+*/
+
+.pattern-select label {
+  margin-left: 10px;
+  display: inline;
+}
+
+
+/* .stockchart {
+  max-width: 100% !important;
+  max-height: 100% !important;
+} */
+
+.chart-modal-width {
+  width: 90vw;    /* Occupy the 90% of the screen width */
+  max-width: 90vw;
+}
+
+.chart-modal-height {
+  height: 90vh;    /* Occupy the 90% of the screen height */
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.modal-symbol {
+  font-size: 1.3rem;
+  display: inline;
+  margin-left: 15px;
+}
+
+.modal-company-name {
+  font-size: 1.3rem;
+  display: inline;
+}
+
+.chart-new-tab {
+  margin-left: 10px;
+  font-size: small;
+  vertical-align: middle;
 }

@@ -5,8 +5,8 @@
 							  'embedded-opentype', and 'svg' */
 }
 
-.navbar,
-.navbar a {
+.nav-header .navbar,
+.nav-header .navbar a {
 	width: auto;
 	overflow: auto;
 }
@@ -16,8 +16,9 @@
 	height: 48px;
 }
 
-.navbar {
+.nav-header .navbar {
 	height: max-content;
+	overflow: visible;
 }
 
 .navbar-toolbar .dropdown-menu {
@@ -28,7 +29,7 @@
 }
 
 .nav-header .nav-item:hover {
-	background-color: rgba(0, 0, 0, 0.1);
+	background-color: rgba(0, 0, 0, 0.05);
 	border-radius: 5px;
 }
 
@@ -46,4 +47,17 @@
 
 .nav-header .navbar-nav .nav-link {
 	color: rgb(68, 68, 68) !important;
+}
+
+.nav-header .nav-item {
+	padding: 4px;
+}
+
+.nav-header .navbar-right {
+	margin-right: 2vw;
+}
+
+.user-menu {
+	width: fit-content;
+	min-width: fit-content;
 }

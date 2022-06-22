@@ -18,15 +18,18 @@ using CoreIdentity.API.Identity.Models;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using CoreIdentity.API.Common;
+using CoreIdentity.API.Identity.Interfaces;
+using CoreIdentity.API.Controllers;
 
 namespace CoreIdentity.API.Identity.Controllers
 {
 	[Produces("application/json")]
 	[Route("api/auth")]
-	public class AuthController : Controller
+	public class AuthController : BaseController
 	{
 		private readonly UserManager<ApplicationUser> _userManager;
 		private readonly RoleManager<IdentityRole> _roleManager;
+		private readonly IRefreshTokenRepo _repo;
 		private readonly IConfiguration _configuration;
 		private readonly IEmailService _emailService;
 		private readonly ClientAppSettings _client;
@@ -38,7 +41,8 @@ namespace CoreIdentity.API.Identity.Controllers
 			IConfiguration configuration,
 			IEmailService emailService,
 			IOptions<ClientAppSettings> client,
-			IOptions<JwtSecurityTokenSettings> jwt
+			IOptions<JwtSecurityTokenSettings> jwt,
+			IRefreshTokenRepo repo
 			)
 		{
 			this._userManager = userManager;
@@ -47,6 +51,7 @@ namespace CoreIdentity.API.Identity.Controllers
 			this._emailService = emailService;
 			this._client = client.Value;
 			this._jwt = jwt.Value;
+			this._repo = repo;
 		}
 
 		/// <summary>
@@ -91,7 +96,10 @@ namespace CoreIdentity.API.Identity.Controllers
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
-			var user = new ApplicationUser { UserName = model.UserName, Email = model.Email, EmailConfirmed = true };
+			var user = new ApplicationUser { UserName = model.UserName, Email = model.Email, FirstName = model.FirstName, LastName = model.LastName };
+			if (!_configuration.GetSection("EmailFeature").Get<bool>())
+				user.EmailConfirmed = true;
+
 			var result = await _userManager.CreateAsync(user, model.Password).ConfigureAwait(false);
 
 			if (result.Succeeded)
@@ -118,7 +126,15 @@ namespace CoreIdentity.API.Identity.Controllers
 		[Route("token")]
 		public async Task<IActionResult> CreateToken([FromBody] LoginViewModel model)
 		{
-			var user = await _userManager.FindByNameAsync(model.UserName).ConfigureAwait(false);
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
+
+			ApplicationUser user = null;
+			if (!string.IsNullOrEmpty(model.Email))
+				user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+			else if (!string.IsNullOrEmpty(model.UserName))
+				user = await _userManager.FindByNameAsync(model.UserName).ConfigureAwait(false);
+
 			if (user == null)
 				return BadRequest(new string[] { "Invalid credentials." });
 
@@ -148,16 +164,22 @@ namespace CoreIdentity.API.Identity.Controllers
 				}
 				else
 				{
-					JwtSecurityToken jwtSecurityToken = await CreateJwtToken(user).ConfigureAwait(false);
-					var refreshToken = GenerateRefreshToken();
-					user.RefreshToken = refreshToken;
-					user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwt.RefreshInDays);
-					await _userManager.UpdateAsync(user);
-
 					tokenModel.TFAEnabled = false;
-					tokenModel.Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
-					tokenModel.RefreshToken = refreshToken;
 
+					var refreshToken = GenerateRefreshToken();
+					var expiredDate = DateTime.UtcNow.AddHours(_jwt.RefreshInHours)
+													.AddDays(model.IsRemember ? _jwt.RememberExtendDays : 0);
+					await _repo.Insert(new RefreshToken {
+						UserLocalId = user.LocalId,
+						Value = refreshToken,
+						ExpiredDate = expiredDate,
+						IsRemember = model.IsRemember
+					});
+					tokenModel.RefreshToken = refreshToken;
+					tokenModel.RefreshExpireTime = Utils.GetEpochTimeSec(expiredDate);
+
+					JwtSecurityToken jwtSecurityToken = await CreateJwtToken(user).ConfigureAwait(false);
+					tokenModel.AccessToken = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
 
 					return Ok(tokenModel);
 				}
@@ -192,7 +214,7 @@ namespace CoreIdentity.API.Identity.Controllers
 				{
 					HasVerifiedEmail = true,
 					TFAEnabled = false,
-					Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken)
+					AccessToken = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken)
 				};
 
 				return Ok(tokenModel);
@@ -214,14 +236,19 @@ namespace CoreIdentity.API.Identity.Controllers
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
-			var user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+			ApplicationUser user = null;
+			if (!string.IsNullOrEmpty(model.Email))
+				user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+			else if (!string.IsNullOrEmpty(model.UserName))
+				user = await _userManager.FindByNameAsync(model.UserName).ConfigureAwait(false);
+
 			if (user == null || !(await _userManager.IsEmailConfirmedAsync(user).ConfigureAwait(false)))
-				return BadRequest(new string[] { "Please verify your email address." });
+				return BadRequest();
 
 			var code = await _userManager.GeneratePasswordResetTokenAsync(user).ConfigureAwait(false);
 			var callbackUrl = $"{_client.Url}{_client.ResetPasswordPath}?uid={user.Id}&code={System.Net.WebUtility.UrlEncode(code)}";
 
-			await _emailService.SendPasswordResetAsync(model.Email, callbackUrl).ConfigureAwait(false);
+			await _emailService.SendPasswordResetAsync(user.Email, callbackUrl).ConfigureAwait(false);
 
 			return Ok();
 		}
@@ -241,12 +268,28 @@ namespace CoreIdentity.API.Identity.Controllers
 				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
 			var user = await _userManager.FindByIdAsync(model.UserId).ConfigureAwait(false);
+
+			if (!_configuration.GetSection("EmailFeature").Get<bool>())
+			{
+				if (!string.IsNullOrEmpty(model.Email))
+					user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+				else if (!string.IsNullOrEmpty(model.UserName))
+					user = await _userManager.FindByNameAsync(model.UserName).ConfigureAwait(false);
+			}
+
 			if (user == null)
 			{
 				// Don't reveal that the user does not exist
 				return BadRequest(new string[] { "Invalid credentials." });
 			}
 			var result = await _userManager.ResetPasswordAsync(user, model.Code, model.Password).ConfigureAwait(false);
+
+			if (!_configuration.GetSection("EmailFeature").Get<bool>())
+			{
+				await _userManager.RemovePasswordAsync(user);
+				result = await _userManager.AddPasswordAsync(user, model.Password);
+			}
+
 			if (result.Succeeded)
 			{
 				return Ok(result);
@@ -329,76 +372,128 @@ namespace CoreIdentity.API.Identity.Controllers
 			return token;
 		}
 
+		/// <summary>
+		/// Refresh access token givent old access token &amp; refresh token
+		/// </summary>
+		/// <param name="refreshModel">RefreshTokenViewModel</param>
+		/// <returns></returns>
 		[HttpPost]
 		[ProducesResponseType(typeof(TokenModel), 200)]
 		[ProducesResponseType(typeof(IEnumerable<string>), 400)]
 		[Route("refreshToken")]
-		public async Task<IActionResult> RefreshToken([FromBody]RefreshTokenViewModel refreshModel)
+		public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenViewModel refreshModel)
 		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
+
 			string accessToken = refreshModel.AccessToken;
 			string refreshToken = refreshModel.RefreshToken;
 
 			var principal = GetPrincipalFromExpiredToken(accessToken);
 			if (principal == null)
 			{
-				return BadRequest("Invalid access token or refresh token");
+				return Forbidden("Invalid access token or refresh token");
 			}
 
-			string username = principal.Identity.Name;
+			string userIdStr = (principal.Claims).FirstOrDefault(x => x.Type == "lid")?.Value;
 
-			var user = await _userManager.FindByNameAsync(username);
+			if (string.IsNullOrEmpty(userIdStr)) {
+				return Forbidden();
+			}
+			var userId = long.Parse(userIdStr);
+			var fullRfValue = await _repo.GetIsRemember(userId, refreshToken, DateTime.UtcNow);
 
-			if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
+			if (fullRfValue == null)
 			{
-				return BadRequest("Invalid access token or refresh token is expired");
+				return Forbidden("Invalid access token or refresh token is expired");
 			}
 
 			var newAccessToken = CreateToken(principal.Claims.ToList());
 			var newRefreshToken = GenerateRefreshToken();
+			var newExpiredDate = DateTime.UtcNow.AddHours(_jwt.RefreshInHours)
+												.AddDays(fullRfValue.IsRemember ? _jwt.RememberExtendDays : 0);
+			fullRfValue.Value = newRefreshToken;
+			fullRfValue.ExpiredDate = newExpiredDate;
+			var isSuccess = await _repo.Update(fullRfValue);
 
-			user.RefreshToken = newRefreshToken;
-			await _userManager.UpdateAsync(user);
+			if (!isSuccess) {
+				return StatusCode(500);
+			}
 
 			return Ok(new TokenModel
 			{
-				Token = new JwtSecurityTokenHandler().WriteToken(newAccessToken),
-				RefreshToken = newRefreshToken
+				AccessToken = new JwtSecurityTokenHandler().WriteToken(newAccessToken),
+				RefreshToken = newRefreshToken,
+				RefreshExpireTime = Utils.GetEpochTimeSec(newExpiredDate)
 			});
 		}
 
-        [Authorize]
-        [HttpGet]
-        [Route("revoke")]
-        public async Task<IActionResult> Revoke(string username)
-        {
+		/// <summary>
+		/// Clear login session of users. Expired token user will not be flushed
+		/// </summary>
+		/// <param name="logoutViewModel">LogoutViewModel</param>
+		/// <returns></returns>
+		[HttpPost]
+		[ProducesResponseType(typeof(TokenModel), 200)]
+		[ProducesResponseType(typeof(IEnumerable<string>), 400)]
+		[Route("logout")]
+		public async Task<IActionResult> Logout([FromBody] LogoutViewModel logoutViewModel)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
+
+			string accessToken = logoutViewModel.AccessToken;
+			string refreshToken = logoutViewModel.RefreshToken;
+			var principal = GetPrincipalFromExpiredToken(accessToken);
+			if (principal == null)
+			{
+				return BadRequest("Invalid access token or refresh token");
+			}
+			string userIdStr = (principal.Claims).FirstOrDefault(x => x.Type == "lid")?.Value;
+			if (string.IsNullOrEmpty(userIdStr)) {
+				return BadRequest();
+			}
+			var userId = long.Parse(userIdStr);
+			
+			var isSuccess = await _repo.DeleteByValue(userId, logoutViewModel.RefreshToken);
+
+			return Ok(isSuccess);
+		}
+
+		/// <summary>
+		/// Revoke refresh token of specified user
+		/// </summary>
+		/// <param name="username">string</param>
+		/// <returns></returns>
+		[Authorize(AuthenticationSchemes = "Bearer")]
+		[HttpGet]
+		[Route("revoke")]
+		public async Task<IActionResult> Revoke(string username)
+		{
 			var sessionContext = SessionContext.ResolveContext(HttpContext);
 			if (username != sessionContext.UserName)
 				return Unauthorized();
-            var user = await _userManager.FindByNameAsync(username);
-            if (user == null) return BadRequest("Invalid user name");
+			var user = await _userManager.FindByNameAsync(username);
+			if (user == null) return BadRequest("Invalid user name");
 
-            user.RefreshToken = null;
-            user.RefreshTokenExpiryTime = null;
-            await _userManager.UpdateAsync(user);
+			await _repo.DeleteByUserId(sessionContext.UserLocalId);
 
-            return Ok();
-        }
+			return Ok();
+		}
 
-        [Authorize]
-        [HttpGet]
-        [Route("revokeAll")]
-        public async Task<IActionResult> RevokeAll()
-        {
-            var users = _userManager.Users.ToList();
-            foreach (var user in users)
-            {
-                user.RefreshToken = null;
-                user.RefreshTokenExpiryTime = null;
-                await _userManager.UpdateAsync(user);
-            }
+		/// <summary>
+		/// Revoke refresh token of all user
+		/// </summary>
+		/// <returns></returns>
+		[Authorize(AuthenticationSchemes = "Bearer")]
+		[HttpGet]
+		[Route("revokeAll")]
+		public async Task<IActionResult> RevokeAll()
+		{
+			await _repo.DeleteAll();
 
-            return Ok();
-        }
+			return Ok();
+		}
 
 		private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
 		{
@@ -417,8 +512,8 @@ namespace CoreIdentity.API.Identity.Controllers
 			};
 
 			var tokenHandler = new JwtSecurityTokenHandler();
-            // resolve Identity.Name, ref: https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/issues/415
-            tokenHandler.InboundClaimTypeMap[JwtRegisteredClaimNames.Sub] = ClaimTypes.Name;
+			// resolve Identity.Name, ref: https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet/issues/415
+			// tokenHandler.InboundClaimTypeMap[JwtRegisteredClaimNames.Sub] = ClaimTypes.Name;
 			var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
 			if (!(securityToken is JwtSecurityToken jwtSecurityToken)
 				|| !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))

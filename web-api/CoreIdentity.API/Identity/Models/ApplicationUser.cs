@@ -11,8 +11,8 @@ namespace CoreIdentity.API.Identity.Models
 		[Key, Column(Order = 0)]
 		public long LocalId { get; set; }
 #nullable enable
-		public string? RefreshToken { get; set; }
+		public string? FirstName {get;set;}
+		public string? LastName {get;set;}
 #nullable disable
-		public DateTime? RefreshTokenExpiryTime { get; set; }
 	}
 }

@@ -20,7 +20,7 @@ module.exports = {
 		}
 		
 		if (Object.keys(params).length === 0) {
-			res.json({});
+			res.json([]);
 			return;
 		}
 		if (params['all']) {
@@ -41,7 +41,7 @@ module.exports = {
 		})
 		.catch(function (err) {
 			console.log(err);
-			res.json({err_msg: err});
+			res.json([]);
 		});
 	}
 }

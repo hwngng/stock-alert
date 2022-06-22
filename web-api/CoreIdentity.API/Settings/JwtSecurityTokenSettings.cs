@@ -11,6 +11,7 @@ namespace CoreIdentity.API.Settings
 		public string Issuer { get; set; }
 		public string Audience { get; set; }
 		public double DurationInMinutes { get; set; }
-		public double RefreshInDays { get; set; }
+		public double RefreshInHours { get; set; }
+		public double RememberExtendDays { get; set; }
 	}
 }

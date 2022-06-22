@@ -1,14 +1,18 @@
 import React, { Component } from 'react';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 const { io } = require("socket.io-client");
 import { Nav, NavDropdown, InputGroup, FormControl, Button } from 'react-bootstrap';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faPen, faPlus, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Autosuggest from 'react-autosuggest';
+import dataServiceApi from '../../../common/api/dataServiceApi';
+import userApi from '../../../common/api/userApi';
+import WebAPIAuth from '../../../common/request/WebAPIAuth';
+import DataService from '../../../common/request/DataService';
+import StockChart from '../StockChart';
+import latinize from 'latinize';
 
 export default class StockTicker extends Component {
-
     constructor(props) {
         super(props);
 
@@ -23,14 +27,16 @@ export default class StockTicker extends Component {
             activeDropdownKey: 'vn30',
             searchHints: [],
             searchedSymbol: '',
-            watchlist: [],
-            watchlistTxt: ''
+            watchlists: [],
+            watchlistTxt: '',
+            editWatchlistMode: false,
+            newWatchlistName: '',
+            chartStock: {},
+            isShowChart: false
         };
 
         this.socket = null;
-        this.apiUrl = props.apiUrl;
         this.config = props.config;
-        console.log(this.config);
 
         this.format = {}
         this.format["SFU"] = {};
@@ -255,14 +261,7 @@ export default class StockTicker extends Component {
             }
         ];
         this.sortBy = { fieldName: 'Symbol', direction: 0, updateCount: 0 };
-        this.exchanges = {
-            '10': 'HOSE',
-            '02': 'HNX',
-            '03': 'UPCOM',
-            'HOSE': '10',
-            'HNX': '02',
-            'UPCOM': '03'
-        };
+        this.exchanges = this.config['exchanges'];
         this.filter = {
             top30: true,
             all: null,
@@ -272,9 +271,11 @@ export default class StockTicker extends Component {
         this.versions = null;
         this.stockInfos = null;
         this.subscribedStocks = [];
+        this.apiAuthRequest = WebAPIAuth(this.config['webApiHost']);
+        this.dataSvcRequest = DataService(this.config['dataServiceHost']);
     }
 
-    async componentWillMount() {
+    componentDidMount() {
         this.loadVersion();
         this.socket = this.connect();
         this.loadSnapshot();
@@ -283,14 +284,42 @@ export default class StockTicker extends Component {
     }
 
     loadWatchlist() {
-        let watchlistStr = localStorage.getItem('watchlist');
-        let watchlist = this.state.watchlist;
-        try {
-            let watchlistObj = JSON.parse(watchlistStr);
-            if (!watchlistObj) return;
-            this.setState({ watchlist: watchlistObj });            
-        } catch (e) {}
+        const that = this;
+
+        this.apiAuthRequest(userApi.watchlists.path, {
+            method: userApi.watchlists.method
+        })
+            .then(response => {
+                let watchlistObj = response.data;
+                if (!watchlistObj) return;
+                that.setState({ watchlists: watchlistObj });
+            })
+            .catch(error => {
+                console.log(error);
+            });
     }
+
+    async loadWatchlistDetail(id) {
+        let detail = {};
+        try {
+            let response = await this.apiAuthRequest(userApi.watchlistDetail.path, {
+                method: userApi.watchlistDetail.method,
+                params: { id: id }
+            })
+            detail = response.data;
+            detail['symbols'] = [];
+            if (detail['symbolJson']) {
+                let watchedSymbols = JSON.parse(detail['symbolJson']);
+                detail['symbols'] = watchedSymbols;
+            }
+        } catch (e) {
+            console.log(e);
+            // alert
+        }
+        return detail;
+    }
+
+    // addSymbolToWatchlist(watchlistId)
 
     loadVersion() {
         this.versions = {}
@@ -299,7 +328,8 @@ export default class StockTicker extends Component {
 
     makeSearchHint(stockInfos) {
         let stockInfosWithHint = stockInfos.map(si => {
-            si.hint = si['symbol'] + ' - ' + (si['short_name'] ?? si['name']) + ' - ' + this.exchanges[si['exchange_code']];
+            si.full = si['symbol'] + ' - ' + (si['short_name'] ?? si['name']) + ' - ' + this.exchanges[si['exchange_code']];
+            si.hint = (si['symbol'] + ' ' + latinize(si['short_name'] ?? si['name']) + ' ' + this.exchanges[si['exchange_code']]).toLowerCase();
             return si;
         });
 
@@ -315,13 +345,16 @@ export default class StockTicker extends Component {
                 this.stockInfos = this.makeSearchHint(stockInfoObj['infos']);
                 return;
             }
-        } catch (e) {}
+        } catch (e) { }
         // load from data service
         let stockTicker = this;
         let params = {
             all: true
         }
-        axios.get((new URL('stock/info?', this.config['dataServiceApi'])).toString() + (new URLSearchParams(params)).toString())
+        this.dataSvcRequest(dataServiceApi.stockInfo.path, {
+            method: dataServiceApi.stockInfo.method,
+            params: params
+        })
             .then(function (response) {
                 stockInfoObj = {};
                 let infoObj = response.data;
@@ -359,28 +392,30 @@ export default class StockTicker extends Component {
         return stdStockObjs;
     }
 
-    updateSubscribedStocks(stockObjs) {
-        this.subscribedStocks = stockObjs.map(x => x.Symbol);
+    reloadSubscribedStocks(stockObjs) {
+        this.subscribedStocks = stockObjs.map(s => ({ symbol: s['Symbol'], exchangeCode: s['ExchangeCode'] }));
+        this.socket.emit('clearSub');
+        this.socket.emit('sub', this.subscribedStocks?.map(s => s['symbol']));
         // console.log(this.subscribedStocks);
     }
 
-    loadSnapshot() {
-        let stockTicker = this;
+    async loadSnapshot() {
+        const that = this;
         let stdParams = this.dropNullFields(this.filter);
-
-        axios.get((new URL('stock/snapshot?', this.config['dataServiceApi'])).toString() + (new URLSearchParams(stdParams)).toString())
-            .then(function (response) {
-                let snapshots = response.data;
-                let stockObjs = snapshots;
-                stockObjs = stockTicker.standardizeStockObj(stockObjs);
-                stockObjs = stockTicker.sortStock(stockObjs);
-                stockTicker.updateSubscribedStocks(stockObjs);
-                console.log(stockObjs);
-                stockTicker.setState({ stockObjs });
-            })
-            .catch(function (error) {
-                console.log(error);
+        try {
+            let response = await this.dataSvcRequest(dataServiceApi.snapshot.path, {
+                method: dataServiceApi.snapshot.method,
+                params: stdParams
             });
+            let snapshots = response.data;
+            let stockObjs = snapshots;
+            stockObjs = that.standardizeStockObj(stockObjs);
+            stockObjs = that.sortStock(stockObjs);
+            that.reloadSubscribedStocks(stockObjs);
+            that.setState({ stockObjs });
+        } catch (e) {
+            console.log(e);
+        };
     }
 
     updateStockMessage(msg) {
@@ -525,8 +560,7 @@ export default class StockTicker extends Component {
     }
 
     connect() {
-        const socket = io.connect(this.config['dataServiceApi'], { path: '/realtime', transports: ['websocket'] });
-        socket.emit('sub', ['FLC', 'HAG', 'HSG', 'MBB', 'PDR', 'PVD', 'SHB', 'VIC', 'VND', 'ASP', 'FTS', 'GVR', 'HAG', 'HCM', 'HDC', 'SSI', 'TCB', 'TGG', 'VOS', 'VTO']);
+        const socket = io.connect(this.config['dataServiceHost'], { path: dataServiceApi.realtime.path, transports: ['websocket'] });
         socket.on('disconnect',
             (e) => {
                 if (e) {
@@ -682,7 +716,7 @@ export default class StockTicker extends Component {
         }
     }
 
-    loadFilter(activeTabKey, activeDropdownKey) {
+    async loadFilter(activeTabKey, activeDropdownKey) {
         this.fillObject(this.filter, null)
         switch (activeTabKey) {
             case 'allTab':
@@ -724,6 +758,11 @@ export default class StockTicker extends Component {
                         break;
                 }
                 break;
+            case 'watchlist':
+                if (!activeDropdownKey) return;
+                let detail = await this.loadWatchlistDetail(activeDropdownKey);
+                this.filter.codes = detail['symbols']?.map(s => s.symbol) ?? [];
+                break;
             default:
                 console.log('No valid filter for this tab ' + activeTabKey);
                 break;
@@ -744,40 +783,79 @@ export default class StockTicker extends Component {
             setTimeout(function () {
                 selectedRow.classList.remove('highlight-' + trend);
             }, 1000);
+        } else {
+            // alert symbol not exist in this table
         }
     }
 
-    handleSearchSymbol(symbol) {
+    async addSymbolWatchlist(symbol) {
+        const { activeTabKey, activeDropdownKey } = this.state;
+        let { stockObjs } = this.state;
+        if (activeTabKey != 'watchlist') return;
+        let symbolDetail = this.stockInfos?.find(si => si.symbol === symbol);
+        if (symbolDetail) {
+            let symbolObj = { symbol: symbolDetail['symbol'], exchangeCode: symbolDetail['exchange_code'] };
+            let newSymbol = {
+                id: activeDropdownKey,
+                symbol: symbolObj
+            }
+            try {
+                let response = await this.apiAuthRequest(userApi.insertWatchlistSymbol.path, {
+                    method: userApi.insertWatchlistSymbol.method,
+                    data: newSymbol
+                });
+                let status = response.data;
+                if (status <= 0)
+                    return;
+                // await this.refreshData(activeTabKey, activeDropdownKey);
+                this.fillObject(this.filter, null);
+                this.filter = {
+                    codes: [symbolObj.symbol],
+                    exchangeCodes: [symbolObj.exchangeCode]
+                };
+                let stdParams = this.dropNullFields(this.filter);
+                response = await this.dataSvcRequest(dataServiceApi.snapshot.path, {
+                    method: dataServiceApi.snapshot.method,
+                    params: stdParams,
+                    paramsSerializer: params => (new URLSearchParams(params)).toString()
+                });
+                let insertStockObjs = response.data;
+                insertStockObjs = this.standardizeStockObj(insertStockObjs);
+                stockObjs = stockObjs.concat(insertStockObjs);
+                stockObjs = this.sortStock(stockObjs);
+                this.subscribedStocks?.push(symbolObj);
+                this.socket.emit('sub', [symbolObj.symbol]);
+                this.setState({ stockObjs });
+            } catch (e) {
+                console.log(e);
+                // alert
+            }
+        } else {
+            // alert symbol not exist
+        }
+    }
+
+    async handleSearchSymbol(symbol) {
+        await this.addSymbolWatchlist(symbol);
         this.goToRowSearched(symbol);
         // check if it is in watch list, if not, add to watch list
     }
 
-    refreshData(activeTabKey, activeDropdownKey) {
-        this.loadFilter(activeTabKey, activeDropdownKey);
-        this.loadSnapshot();
+    async refreshData(activeTabKey, activeDropdownKey) {
+        await this.loadFilter(activeTabKey, activeDropdownKey);
+        await this.loadSnapshot();
     }
 
-    handleChangeTab(event) {
+    async handleChangeTab(event, tabKey, dropdownKey) {
         event.preventDefault();
-        let activeTabKey = event.target.dataset.rbEventKey;
-        activeTabKey = activeTabKey ? activeTabKey : event.target.id;
-        let activeDropdownKey = null;
+        let activeTabKey = tabKey;
+        let activeDropdownKey = dropdownKey;
         let activeDropdownTitle = null;
-        this.refreshData(activeTabKey, activeDropdownKey);
-        this.setState({ activeTabKey });
-        this.setState({ activeDropdownKey });
-        this.setState({ activeDropdownTitle });
-    }
-
-    handleChangeDropdownItem(event) {
-        event.preventDefault();
-        let activeTabKey = event.currentTarget.parentNode.parentNode.getAttribute('value');
-        let activeDropdownKey = event.currentTarget.getAttribute('value');
-        let activeDropdownTitle = event.currentTarget.getAttribute('title');
-        this.refreshData(activeTabKey, activeDropdownKey);
-        this.setState({ activeTabKey });
-        this.setState({ activeDropdownKey });
-        this.setState({ activeDropdownTitle });
+        if (activeDropdownKey) {
+            activeDropdownTitle = event.currentTarget.getAttribute('title');
+        }
+        await this.refreshData(activeTabKey, activeDropdownKey);
+        this.setState({ activeTabKey, activeDropdownKey, activeDropdownTitle });
     }
 
     getSuggestions(value) {
@@ -787,8 +865,8 @@ export default class StockTicker extends Component {
         const stockInfos = this.stockInfos;
 
         return inputLength === 0 || !stockInfos ? [] : stockInfos.filter(si =>
-            si['symbol'].toLowerCase().slice(0, inputLength) === inputValue
-            || (si['short_name'] ? si['short_name'].toLowerCase().indexOf(inputValue) >= 0 : si['name'].toLowerCase().indexOf(inputValue) >= 0)
+            (inputLength <= 4 && si['hint'].slice(0, inputLength) === inputValue)
+            || (si['hint']?.slice(3)?.indexOf(inputValue) >= 0)
         );
     }
 
@@ -797,7 +875,7 @@ export default class StockTicker extends Component {
     renderSuggestion(suggestion) {
         return (
             <>
-                {suggestion['hint']}
+                {suggestion['full']}
             </>
         );
     }
@@ -820,34 +898,118 @@ export default class StockTicker extends Component {
         });
     }
 
-    onEnter(event) {
+    onEnterSearch(event) {
         if (event.keyCode === 13) { // Enter
             this.handleSearchSymbol(this.state.searchedSymbol.toUpperCase());
+            this.setState({ searchedSymbol: '' });
+        }
+    }
+
+    onEnterWatchlist(event) {
+        if (event.keyCode === 13) {
+            this.addWatchlist();
         }
     }
 
     onSuggestionSelected(event, { suggestion, suggestionValue }) {
         this.handleSearchSymbol(suggestionValue);
+        this.setState({ searchedSymbol: '' });
     }
 
     onChangeWatchlistTxt(event) {
-        let watchlistTxt = this.state.watchlistTxt;
+        let { watchlistTxt } = this.state;
         watchlistTxt = event.target.value;
         this.setState({ watchlistTxt });
     }
 
-    addWatchlist(event) {
-        let watchlistTxt = this.state.watchlistTxt;
+    addWatchlist() {
+        const that = this;
+        let { watchlists, watchlistTxt, activeTabKey, activeDropdownKey, activeDropdownTitle } = this.state;
         if (!watchlistTxt) return;
-        let watchlist = this.state.watchlist;
-        if (!Array.isArray(watchlist)) watchlist = [];
-        watchlist.push({ id: watchlist.length, name: watchlistTxt });
-        watchlistTxt = '';
-        this.setState({ watchlist, watchlistTxt });
-        localStorage.setItem('watchlist', JSON.stringify(watchlist));
+        if (!Array.isArray(watchlists)) watchlists = [];
+        let newWatchlist = { name: watchlistTxt };
+        this.apiAuthRequest(userApi.insertWatchlist.path, {
+            method: userApi.insertWatchlist.method,
+            data: newWatchlist
+        })
+            .then(response => {
+                let newWlInfo = response.data;
+                if (!newWlInfo && newWlInfo['status'] <= 0) {
+                    // alert
+                    return;
+                }
+                newWatchlist['id'] = newWlInfo['id'];
+                watchlists.push(newWatchlist);
+                watchlistTxt = '';
+                if (activeTabKey == 'watchlist') {
+                    activeDropdownKey = newWatchlist['id'];
+                    activeDropdownTitle = newWatchlist['name'];
+                }
+                that.setState({ watchlists, watchlistTxt, activeDropdownKey, activeDropdownTitle });
+                this.refreshData(activeTabKey, activeDropdownKey);
+            })
+            .catch(error => {
+                // alert
+            })
+    }
+
+    async removeWatchlist(event, wid) {
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+            let response = await this.apiAuthRequest(userApi.removeWatchlist.path, {
+                method: userApi.removeWatchlist.method,
+                params: { id: wid }
+            });
+            let status = response.data;
+            if (status <= 0) {
+                // alert
+            }
+            let { activeTabKey, activeDropdownKey, activeDropdownTitle, watchlists } = this.state;
+            if (!Array.isArray(watchlists)) watchlists = [];
+            watchlists = watchlists.filter(w => w['id'] != wid);
+            if (activeTabKey == 'watchlist' && activeDropdownKey == wid) {
+                let first = watchlists[0];
+                if (first) {
+                    activeDropdownKey = first['id'];
+                    activeDropdownTitle = first['name'];
+                } else {
+                    activeDropdownKey = '';
+                    activeDropdownTitle = '';
+                }
+            }
+            this.setState({ activeDropdownKey, activeDropdownTitle, watchlists });
+            this.refreshData(activeTabKey, activeDropdownKey);
+        } catch (e) {
+            console.log(e);
+            // alert 
+        }
+    }
+
+    removeSymbolWatchlist(event, symbol) {
+        const { activeTabKey, activeDropdownKey } = this.state;
+        let { stockObjs } = this.state;
+        if (activeTabKey != 'watchlist') return;
+        stockObjs = stockObjs?.filter(s => s['Symbol'] != symbol['Symbol']);
+        this.subscribedStocks = this.subscribedStocks?.filter(ss => ss['symbol'] != symbol['Symbol']);
+        this.socket.emit('unsub', [symbol['Symbol']]);
+        this.updateWatchlist(activeDropdownKey, false, true);
+        this.setState({ stockObjs });
+    }
+
+    handleCloseModal() {
+        this.setState({ chartStock: {}, isShowChart: false });
+    }
+
+    handleOpenModal(event, snapshot) {
+        event.preventDefault();
+        let chartStock = this.stockInfos?.find(si => si['symbol'] == snapshot['Symbol'] && si['exchange_code'] == snapshot['ExchangeCode']);
+        this.setState({ chartStock, isShowChart: true });
     }
 
     renderStockTable(stockObjs) {
+        const that = this;
+        const { activeTabKey, chartStock, isShowChart } = this.state;
         return (
             <div>
                 <div className="table-responsive table-fix-head">
@@ -890,8 +1052,20 @@ export default class StockTicker extends Component {
                                 return (
                                     <tr key={s.Symbol} id={s.Symbol} className="align-midle">
                                         <td>
-                                            <Link to={`/stock-chart?code=${s.Symbol}`} target="_blank">{s.Symbol}</Link>
-                                            <input name="exchangeCode" type="hidden" value={s.ExchangeCode}></input>
+                                            <div className="symbol clear-fix">
+                                                <a className="symbol-link link-primary" onClick={e => that.handleOpenModal(e, s)}>{s.Symbol}</a>
+                                                <input name="exchangeCode" type="hidden" value={s.ExchangeCode}></input>
+                                                {activeTabKey == 'watchlist' &&
+                                                    (
+                                                        <Button
+                                                            className="symbol-control-btn remove float-end"
+                                                            onClick={e => that.removeSymbolWatchlist(e, s)}
+                                                        >
+                                                            <FontAwesomeIcon className="control-icon" icon={faXmark} />
+                                                        </Button>
+                                                    )
+                                                }
+                                            </div>
                                         </td>
                                         <td className={'match-price ' + s.PriceTrendClass}>{this.formatFloat(s.MatchPrice, 2, true)}</td>
                                         <td className="price-nochange">{this.formatFloat(s.RefPrice, 2, true)}</td>
@@ -908,102 +1082,239 @@ export default class StockTicker extends Component {
                         </tbody>
                     </table>
                 </div>
+                {isShowChart ?
+                    (<StockChart config={this.props.config} stock={chartStock} handleCloseModal={this.handleCloseModal.bind(this)}/>)
+                    : (<></>)}
             </div>
         );
     }
 
+    onClickEditWatchlist(event) {
+        event.stopPropagation();
+    }
+
+    onChangeEditWatchlist(event, watchlist) {
+        let { newWatchlistName } = this.state;
+        newWatchlistName = event.target.value;
+        this.setState({ newWatchlistName });
+    }
+
+    updateWatchlist(wid, isEditName = false, isEditSymbol = false) {
+        const that = this;
+        const { watchlists, activeTabKey, activeDropdownKey, newWatchlistName } = this.state;
+        let { activeDropdownTitle } = this.state;
+        const editedWatchlist = watchlists?.find(w => w['id'] == wid);
+        if (!editedWatchlist)
+            return;
+        let updatedName = isEditName ? newWatchlistName : null;
+        let updatedSymbol = isEditSymbol ? this.subscribedStocks : null;
+        this.apiAuthRequest(userApi.updateWatchlist.path, {
+            method: userApi.updateWatchlist.method,
+            data: {
+                id: wid,
+                name: updatedName,
+                symbols: updatedSymbol
+            }
+        })
+            .then(response => {
+                let status = response.data;
+                if (status && status > 0) {
+                    if (isEditName) {
+                        editedWatchlist['editMode'] = false;
+                        editedWatchlist['name'] = newWatchlistName;
+                        if (activeTabKey == 'watchlist' && activeDropdownKey == editedWatchlist['id']) {
+                            activeDropdownTitle = editedWatchlist['name']
+                        }
+                    }
+                    if (isEditSymbol) {
+
+                    }
+                    that.setState({ watchlists, activeDropdownTitle });
+                }
+            })
+    }
+
+    onEnterEditWatchlist(event, wid) {
+        if (event.keyCode === 13) {
+            this.updateWatchlist(wid, true, false);
+        }
+    }
+
+    turnOnEditWatchlistMode(event, watchlist) {
+        event.preventDefault();
+        event.stopPropagation();
+        const { watchlists } = this.state;
+        let { newWatchlistName } = this.state;
+        // watchlist referenced to watchlists state, hence changing watchlist['name']'ll impact watchlists
+        watchlists.forEach(w => w['editMode'] = false);
+        watchlist['editMode'] = true;
+        newWatchlistName = watchlist['name'];
+        this.setState({ watchlists, newWatchlistName })
+    }
+
+    turnOffEditWatchlistMode(event, watchlist) {
+        event.preventDefault();
+        event.stopPropagation();
+        const { watchlists } = this.state;
+        // watchlist referenced to watchlists state, hence changing watchlist['name']'ll impact watchlists
+        watchlists.forEach(w => w['editMode'] = false);
+        this.setState({ watchlists })
+    }
+
+    renderWatchlistName(watchlist) {
+        const that = this;
+        if (watchlist['editMode']) {
+            const { newWatchlistName } = this.state;
+            return (
+                <>
+                    <FormControl
+                        value={newWatchlistName}
+                        onChange={e => that.onChangeEditWatchlist(e, watchlist)}
+                        className="edit-watchlist-txt"
+                        onKeyDown={e => that.onEnterEditWatchlist(e, watchlist['id'])}
+                        onClick={this.onClickEditWatchlist.bind(this)}
+                        onBlur={e => this.turnOffEditWatchlistMode(e, watchlist)}
+                        autoFocus
+                    />
+                </>
+            )
+        }
+
+        return (
+            <span>{watchlist['name']}</span>
+        )
+    }
+
     render() {
-        const stockTicker = this;
-        const { searchedSymbol, searchHints, watchlist, watchlistTxt } = this.state;
+        const that = this;
+        const { searchedSymbol, searchHints, watchlists, watchlistTxt, activeTabKey, activeDropdownKey, activeDropdownTitle } = this.state;
         let contents = this.state.error
             ? <p><em>Error: {this.state.error.message}</em></p>
             : this.state.loading
                 ? <p><em>Loading...</em></p>
                 : this.renderStockTable(this.state.stocks);
-        let activeTabKey = this.state.activeTabKey;
-        let activeDropdownKey = this.state.activeDropdownKey;
-        let activeDropdownTitle = this.state.activeDropdownTitle;
 
         contents = this.renderStockTable(this.state.stockObjs);
 
         const inputProps = {
             placeholder: 'Nhập mã CK',
             value: searchedSymbol.toString(),
-            onChange: this.onChangeSearchSymbol,
-            onKeyDown: this.onEnter
+            onChange: this.onChangeSearchSymbol.bind(this),
+            onKeyDown: this.onEnterSearch.bind(this)
         };
         return (
             <>
                 <Nav variant="tabs" defaultActiveKey={activeTabKey} className="portfolio-nav">
                     <Nav.Item className="search-nav">
                         <InputGroup className="search-bar">
-                            {/* <FormControl placeholder="Nhập mã CK" aria-label="Nhập mã CK" aria-describedby="basic-addon2"/> */}
                             <Autosuggest
                                 suggestions={searchHints}
-                                onSuggestionsFetchRequested={this.onSuggestionsFetchRequested}
-                                onSuggestionsClearRequested={this.onSuggestionsClearRequested}
-                                onSuggestionSelected={this.onSuggestionSelected}
-                                getSuggestionValue={this.getSuggestionValue}
-                                renderSuggestion={this.renderSuggestion}
+                                onSuggestionsFetchRequested={this.onSuggestionsFetchRequested.bind(this)}
+                                onSuggestionsClearRequested={this.onSuggestionsClearRequested.bind(this).bind(this)}
+                                onSuggestionSelected={this.onSuggestionSelected.bind(this)}
+                                getSuggestionValue={this.getSuggestionValue.bind(this)}
+                                renderSuggestion={this.renderSuggestion.bind(this)}
                                 inputProps={inputProps}
                             />
-                            <Button variant="success" id="add-btn" className="add-stock-btn"><FontAwesomeIcon icon={faPlus} /></Button>
+                            <Button variant="success" id="add-btn" className="add-stock-btn"><FontAwesomeIcon className="plus-icon" icon={faPlus} /></Button>
                         </InputGroup>
                     </Nav.Item>
                     <Nav.Item className="all-nav">
-                        <Nav.Link eventKey="allTab"
+                        <Nav.Link
                             active={activeTabKey === "allTab"}
-                            value="allTab"
-                            onClick={this.handleChangeTab.bind(this)}>
+                            onClick={e => this.handleChangeTab(e, 'allTab', null)}
+                        >
                             Tất cả
                         </Nav.Link>
                     </Nav.Item>
                     <Nav.Item className="hose-nav">
-                        <NavDropdown id="hoseTab"
+                        <NavDropdown
                             active={activeTabKey === "hoseTab"}
-                            value="hoseTab"
-                            title={(activeDropdownTitle && activeTabKey === "hoseTab") ? activeDropdownTitle : "HOSE"}>
-                            <NavDropdown.Item value="hose" onClick={this.handleChangeDropdownItem.bind(this)} active={activeDropdownKey === "hose"} title="HOSE"><span>HOSE</span></NavDropdown.Item>
-                            <NavDropdown.Item value="vn30" onClick={this.handleChangeDropdownItem.bind(this)} active={activeDropdownKey === "vn30"} title="VN30"><span>VN30</span></NavDropdown.Item>
+                            title={(activeDropdownTitle && activeTabKey === "hoseTab") ? activeDropdownTitle : "HOSE"}
+                        >
+                            <NavDropdown.Item
+                                onClick={e => this.handleChangeTab(e, 'hoseTab', 'hose')}
+                                active={activeDropdownKey === "hose"}
+                                title="HOSE"
+                            >
+                                <span>HOSE</span>
+                            </NavDropdown.Item>
+                            <NavDropdown.Item
+                                onClick={e => this.handleChangeTab(e, 'hoseTab', 'vn30')}
+                                active={activeDropdownKey === "vn30"}
+                                title="VN30"
+                            >
+                                <span>VN30</span>
+                            </NavDropdown.Item>
                         </NavDropdown>
                     </Nav.Item>
                     <Nav.Item className="hnx-nav">
-                        <NavDropdown id="hnxTab"
+                        <NavDropdown
                             active={activeTabKey === "hnxTab"}
-                            value="hnxTab"
-                            title={(activeDropdownTitle && activeTabKey === "hnxTab") ? activeDropdownTitle : "HNX"}>
-                            <NavDropdown.Item value="hnx" onClick={this.handleChangeDropdownItem.bind(this)} active={activeDropdownKey === "hnx"} title="HNX"><span>HNX</span></NavDropdown.Item>
-                            <NavDropdown.Item value="hnx30" onClick={this.handleChangeDropdownItem.bind(this)} active={activeDropdownKey === "hnx30"} title="HNX30"><span>HNX30</span></NavDropdown.Item>
+                            title={(activeDropdownTitle && activeTabKey === "hnxTab") ? activeDropdownTitle : "HNX"}
+                        >
+                            <NavDropdown.Item
+                                onClick={e => this.handleChangeTab(e, 'hnxTab', 'hnx')}
+                                active={activeDropdownKey === "hnx"}
+                                title="HNX"
+                            >
+                                <span>HNX</span>
+                            </NavDropdown.Item>
+                            <NavDropdown.Item
+                                onClick={e => this.handleChangeTab(e, 'hnxTab', 'hnx30')}
+                                active={activeDropdownKey === "hnx30"}
+                                title="HNX30"
+                            >
+                                <span>HNX30</span>
+                            </NavDropdown.Item>
                         </NavDropdown>
                     </Nav.Item>
                     <Nav.Item className="upcom-nav">
-                        <NavDropdown id="upcomTab"
+                        <NavDropdown
                             active={activeTabKey === "upcomTab"}
-                            value="upcomTab"
                             title={(activeDropdownTitle && activeTabKey === "upcomTab") ? activeDropdownTitle : "UPCOM"}>
-                            <NavDropdown.Item value="upcom" onClick={this.handleChangeDropdownItem.bind(this)} active={activeDropdownKey === "upcom"} title="UPCOM"><span>UPCOM</span></NavDropdown.Item>
+                            <NavDropdown.Item
+                                onClick={e => this.handleChangeTab(e, 'upcomTab', 'upcom')}
+                                active={activeDropdownKey === "upcom"}
+                                title="UPCOM"
+                            >
+                                <span>UPCOM</span>
+                            </NavDropdown.Item>
                         </NavDropdown>
                     </Nav.Item>
                     <Nav.Item className="watchlist-nav">
-                        <NavDropdown id="watchlist"
+                        <NavDropdown
                             active={activeTabKey === "watchlist"}
-                            value="watchlist"
-                            title={(activeDropdownTitle && activeTabKey === "watchlist") ? activeDropdownTitle : "DS Theo dõi"}>
-                            {watchlist.map(function (w, idx) {
-                                let wid = 'watchlist-' + idx;
+                            title={(activeDropdownTitle && activeTabKey === "watchlist") ? activeDropdownTitle : "DS Theo dõi"}
+                        >
+                            {watchlists.map(function (w, idx) {
+                                let wid = w['id'];
                                 return (
-                                    <NavDropdown.Item key={w['id']}
+                                    <NavDropdown.Item key={wid}
                                         value={wid}
-                                        onClick={stockTicker.handleChangeDropdownItem.bind(stockTicker)}
+                                        onClick={e => that.handleChangeTab(e, 'watchlist', wid)}
                                         active={activeDropdownKey === wid}
-                                        title={w['name']}>
-                                        <span>{w['name']}</span>
+                                        title={w['name']}
+                                        className="watchlist-item"
+                                    >
+                                        {that.renderWatchlistName(w)}
+                                        <span className="watchlist-control">
+                                            <Button className="watchlist-control-btn" onClick={e => that.turnOnEditWatchlistMode(e, w)}><FontAwesomeIcon className="control-icon" icon={faPen} /></Button>
+                                            <Button className="watchlist-control-btn remove" onClick={e => that.removeWatchlist(e, wid)}><FontAwesomeIcon className="control-icon" icon={faXmark} /></Button>
+                                        </span>
                                     </NavDropdown.Item>);
                             })}
                             <NavDropdown.Divider />
                             <li value="watchlist-add" title="Thêm danh mục" className="add-watchlist-nav">
                                 <InputGroup className="add-watchlist-inp">
-                                    <FormControl value={watchlistTxt} onChange={this.onChangeWatchlistTxt.bind(this)} placeholder="Tạo danh mục mới..." aria-label="Tạo danh mục mới" className="add-watchlist-txt" />
+                                    <FormControl
+                                        value={watchlistTxt}
+                                        onChange={this.onChangeWatchlistTxt.bind(this)}
+                                        placeholder="Tạo danh mục mới..."
+                                        aria-label="Tạo danh mục mới"
+                                        className="add-watchlist-txt"
+                                        onKeyDown={this.onEnterWatchlist.bind(this)}
+                                    />
                                     <Button onClick={this.addWatchlist.bind(this)} variant="info" id="add-btn" className="add-watchlist-btn"><FontAwesomeIcon icon={faPlus} /></Button>
                                 </InputGroup>
                             </li>

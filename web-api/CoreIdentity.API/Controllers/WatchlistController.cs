@@ -21,8 +21,13 @@ namespace CoreIdentity.API.Controllers
             
 		}
 
-		// GET: api/watchlist
-		// GET: api/watchlist?id=1
+		/// <summary>
+		/// Get watchlist that belonged to current user, if id not given, all one's watchlist will be returned
+		/// </summary>
+		/// <param name="id">int</param>
+		/// <returns></returns>
+		/// GET: api/watchlist
+		/// GET: api/watchlist?id=1
 		[HttpGet]
 		public async Task<IActionResult> Get(int? id)
 		{
@@ -34,6 +39,11 @@ namespace CoreIdentity.API.Controllers
             return Ok(await _repo.GetByUserId(_sessionContext.UserLocalId));
 		}
 
+		/// <summary>
+		/// Insert new watch list
+		/// </summary>
+		/// <param name="watchlistViewModel">WatchlistViewModel</param>
+		/// <returns></returns>
 		// PUT: api/example/5
 		[HttpPost]
 		public async Task<IActionResult> Insert([FromBody] WatchlistViewModel watchlistViewModel)
@@ -41,6 +51,9 @@ namespace CoreIdentity.API.Controllers
 			if (watchlistViewModel is null || string.IsNullOrEmpty(watchlistViewModel.Name))
 				return BadRequest();
 			var (status, insertedId) = await _repo.InsertWatchlist(_sessionContext.UserLocalId, watchlistViewModel);
+			if (status < 1) {
+				return Forbidden();
+			}
 			return Ok(new
 			{
 				Status = status,
@@ -48,6 +61,11 @@ namespace CoreIdentity.API.Controllers
 			});
 		}
 
+		/// <summary>
+		/// Update existing watchlist
+		/// </summary>
+		/// <param name="watchlistViewModel">WatchlistViewModel</param>
+		/// <returns></returns>
 		[HttpPut]
 		public async Task<IActionResult> Update([FromBody] WatchlistViewModel watchlistViewModel)
 		{
@@ -55,10 +73,15 @@ namespace CoreIdentity.API.Controllers
 				return BadRequest();
 			var status = await _repo.UpdateWatchlist(_sessionContext.UserLocalId, watchlistViewModel);
 			if (status < 0)
-				return BadRequest();
+				return Forbidden();
 			return Ok(status);
 		}
 
+		/// <summary>
+		/// Delete watchlist belonged to current user
+		/// </summary>
+		/// <param name="id">int</param>
+		/// <returns></returns>
 		[HttpDelete]
 		public async Task<IActionResult> Delete(int? id)
 		{
@@ -69,6 +92,11 @@ namespace CoreIdentity.API.Controllers
 			return Ok(await _repo.DeleteWatchlist(_sessionContext.UserLocalId, id.Value));
 		}
 
+		/// <summary>
+		/// Insert single symbol to the given watchlist
+		/// </summary>
+		/// <param name="watchlistSymbolViewModel">WatchlistSymbolViewModel</param>
+		/// <returns></returns>
 		[HttpPost]
 		[Route("symbol")]
 		public async Task<IActionResult> InsertSymbol([FromBody] WatchlistSymbolViewModel watchlistSymbolViewModel)
@@ -79,7 +107,7 @@ namespace CoreIdentity.API.Controllers
 				return BadRequest();
 			var status = await _repo.InsertSymbol(_sessionContext.UserLocalId, watchlistSymbolViewModel);
 			if (status < 0)
-				return BadRequest();
+				return Forbidden();
 			return Ok(status);
 		}
 	}

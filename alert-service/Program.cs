@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using AlertService.Impls;
-using AlertService.Interfaces;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace AlertService
 {
@@ -18,14 +18,9 @@ namespace AlertService
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
-                .ConfigureServices((hostContext, services) =>
+                .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    services.AddSingleton<IWebSocketHub, WebSocketHub>();
-                    services.AddSingleton<IHandleMessage, TestAlert>();
-                    services.AddSingleton<IDistributeMessage, DistributeMessage>();
-                    // services.AddSingleton<IHandleMessage, Test2Alert>();
-                    services.AddSingleton<IDataHub, DataHub>();
-                    services.AddHostedService<Worker>();
+                    webBuilder.UseStartup<Startup>();
                 });
     }
 }

@@ -181,9 +181,18 @@ function drawOnCanvas(ctx, props, moreProps) {
 			ctx.fillRect(d.x - wickOffset, d.y1, wickWidth, d.y2 - d.y1);
 			ctx.fillRect(d.x - wickOffset, d.y3, wickWidth, d.y4 - d.y3);
 			if (each.isHighlighted) {
-				canvas_arrow(ctx, d.x - 0.5, d.y1 - 35, d.x - 0.5, d.y1 - 12);
-				ctx.strokeRect(d.x - wickOffset, d.y1, wickWidth, d.y2 - d.y1);
-				ctx.strokeRect(d.x - wickOffset, d.y3, wickWidth, d.y4 - d.y3);
+				let range = yScale.range();
+				let radius = yScale(0) - yScale(0.09);
+				let distance = yScale(0) - yScale(0.5);
+				// canvas_arrow(ctx, d.x - 0.5, d.y1 - 35, d.x - 0.5, d.y1 - 12);
+				if (d.y1 > (range[0] + range[1]) / 2) {
+					canvas_circle(ctx, d.x - 0.5, d.y1 - distance, radius, '#000000');
+				} else {
+					canvas_circle(ctx, d.x - 0.5, d.y4 + distance, radius, '#000000');
+
+				}
+				// ctx.strokeRect(d.x - wickOffset, d.y1, wickWidth, d.y2 - d.y1);
+				// ctx.strokeRect(d.x - wickOffset, d.y3, wickWidth, d.y4 - d.y3);
 			}
 		});
 	});
@@ -295,6 +304,16 @@ function canvas_arrow(ctx, fromx, fromy, tox, toy) {
 	ctx.lineWidth = origWidth;
 }
 
+function canvas_circle(ctx, centerX, centerY, radius, stroke) {
+	const origWidth = ctx.lineWidth;
+	ctx.beginPath();
+	ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+	ctx.fillStyle = stroke;
+	ctx.strokeStyle = stroke;
+	ctx.fill();
+	ctx.lineWidth = origWidth;
+}
+
 function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightData) {
 
 	const { wickStroke: wickStrokeProp } = props;
@@ -328,7 +347,7 @@ function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightData
 	for (let i = 0; i < plotData.length; i++) {
 		const d = plotData[i];
 		if (isDefined(yAccessor(d).close)) {
-			const x = Math.round(xScale(xAccessor(d)));
+			const x = Math.round(xScale(xAccessor(d))) - 15;
 			// const x = Math.round(xScale(xAccessor(d)) - offset);
 
 			const ohlc = yAccessor(d);
@@ -362,7 +381,7 @@ function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightData
 }
 
 function isHighlighted(d, highlightData) {
-	const currentCandle = d.date.getTime() ;
+	const currentCandle = d.date.getTime();
 	// - d.date.getTimezoneOffset() * 60 * 1000
 	// console.log(highlightData.includes(currentCandle));
 	// console.log(currentCandle);

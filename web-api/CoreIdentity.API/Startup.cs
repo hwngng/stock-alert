@@ -1,6 +1,8 @@
 ﻿using CoreIdentity.API.Helpers;
 using CoreIdentity.API.Identity;
+using CoreIdentity.API.Identity.Interfaces;
 using CoreIdentity.API.Identity.Models;
+using CoreIdentity.API.Identity.Repo;
 using CoreIdentity.API.Middleware;
 using CoreIdentity.API.Services;
 using CoreIdentity.API.Settings;
@@ -34,6 +36,7 @@ namespace CoreIdentity.API
         {
             // Identity
             services.AddDbContext<SecurityContext>(options => options.UseNpgsql(Configuration["ConnectionStrings:DefaultConnection"]));
+            services.AddScoped<IRefreshTokenRepo, RefreshTokenRepo>();
 
             // Tools->NuGet Package Manager -> Package Manager Console
             // Initialise

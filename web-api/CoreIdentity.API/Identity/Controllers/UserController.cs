@@ -6,24 +6,54 @@ using System.Linq;
 using System.Threading.Tasks;
 using CoreIdentity.API.Identity.ViewModels;
 using System.Collections.Generic;
+using CoreIdentity.API.Controllers;
+using Microsoft.AspNetCore.Http;
+using CoreIdentity.API.Identity.Models;
 
 namespace CoreIdentity.API.Identity.Controllers
 {
     [Authorize(AuthenticationSchemes = "Bearer")]
     [Produces("application/json")]
     [Route("api/user")]
-    public class UserController : Controller
+    public class UserController : AuthorizedController
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
 
         public UserController(
-            UserManager<IdentityUser> userManager,
-            RoleManager<IdentityRole> roleManager
-            )
+            UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole> roleManager,
+            IHttpContextAccessor contextAccessor
+            ) : base(contextAccessor)
         {
             this._userManager = userManager;
             this._roleManager = roleManager;
+        }
+
+        /// <summary>
+        /// Get current user
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        [ProducesResponseType(typeof(ApplicationUser), 200)]
+        [ProducesResponseType(typeof(IEnumerable<string>), 400)]
+        [Route("current")]
+        public IActionResult GetInfo()
+        {
+            var userName = _sessionContext.UserName;
+
+            return Ok(_userManager.Users
+                .Where(user => user.UserName == userName)
+                .Select(user => new
+                {
+                    user.Id,
+                    user.UserName,
+                    user.FirstName,
+                    user.LastName,
+                    user.Email,
+                    user.PhoneNumber
+                })
+                .FirstOrDefault());
         }
 
         /// <summary>
@@ -31,7 +61,7 @@ namespace CoreIdentity.API.Identity.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<IdentityUser>), 200)]
+        [ProducesResponseType(typeof(IEnumerable<ApplicationUser>), 200)]
         [Route("get")]
         public IActionResult Get() => Ok(
             _userManager.Users.Select(user => new
@@ -50,7 +80,7 @@ namespace CoreIdentity.API.Identity.Controllers
         /// <param name="Id"></param>
         /// <returns></returns>
         [HttpGet]
-        [ProducesResponseType(typeof(IdentityUser), 200)]
+        [ProducesResponseType(typeof(ApplicationUser), 200)]
         [ProducesResponseType(typeof(IEnumerable<string>), 400)]
         [Route("get/{Id}")]
         public IActionResult Get(string Id)
@@ -89,7 +119,7 @@ namespace CoreIdentity.API.Identity.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
-            IdentityUser user = new IdentityUser
+            ApplicationUser user = new ApplicationUser
             {
                 UserName = model.Email,
                 Email = model.Email,
@@ -139,7 +169,7 @@ namespace CoreIdentity.API.Identity.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState.Values.Select(x => x.Errors.FirstOrDefault().ErrorMessage));
 
-            IdentityUser user = await _userManager.FindByIdAsync(Id).ConfigureAwait(false);
+            ApplicationUser user = await _userManager.FindByIdAsync(Id).ConfigureAwait(false);
             if (user == null)
                 return BadRequest(new string[] { "Could not find user!" });
 
@@ -173,7 +203,7 @@ namespace CoreIdentity.API.Identity.Controllers
             if (String.IsNullOrEmpty(Id))
                 return BadRequest(new string[] { "Empty parameter!" });
 
-            IdentityUser user = await _userManager.FindByIdAsync(Id).ConfigureAwait(false);
+            ApplicationUser user = await _userManager.FindByIdAsync(Id).ConfigureAwait(false);
             if (user == null)
                 return BadRequest(new string[] { "Could not find user!" });
 
