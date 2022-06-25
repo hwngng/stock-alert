@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AlertService.Services.Models;
+using AlertService.Services.Models.Indicator;
 
 namespace AlertService.Services.Interfaces
 {
@@ -13,6 +14,10 @@ namespace AlertService.Services.Interfaces
 
         Task<SFUGeneral> GetSnapshot (string code);
 
-        Task<List<OHLCV>> GetHistoricalPrice (string code, DateTime startFrom, DateTime? toDate = null);
+        Task<List<OHLCV>> GetHistoricalPrice (string code, DateTime? startFrom = null, DateTime? toDate = null);
+
+        Task<Stock> GetLatestStockData(string code);
+
+        Task<SMA> GetSMAIndicator(string code, int period);
     }
 }

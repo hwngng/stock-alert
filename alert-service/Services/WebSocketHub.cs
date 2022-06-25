@@ -114,15 +114,18 @@ namespace AlertService.Services
 						continue;
 					}
 					var sockData = GetSocketData(msg);
-					if (string.IsNullOrEmpty(sockData)) {
+					if (string.IsNullOrEmpty(sockData))
+					{
 						_logger.LogInformation("Received: {msg}", msg);
 					}
-					var watch = System.Diagnostics.Stopwatch.StartNew();
-					var msgObj = VNDHelper.Parse(sockData, msgNamespace);
-					watch.Stop();
-					_logger.LogInformation("Parse object time: {time}", watch.ElapsedTicks);
+					// var watch = System.Diagnostics.Stopwatch.StartNew();
+					var msgObj = VNDHelper.Parse(sockData, msgNamespace, _ws.ReservedMessageTypes);
+					// watch.Stop();
 					if (!(msgObj is null))
+					{
+						// _logger.LogInformation("Parse object time: {time}", watch.ElapsedTicks);
 						await _distributeMsg.Distribute(msgObj);
+					}
 					// _logger.LogInformation("From WebScoketHandler ({time}): {msg}", DateTimeOffset.Now, msg);
 				}
 			}
@@ -142,7 +145,9 @@ namespace AlertService.Services
 
 		private string GetSocketData(string sockMsg)
 		{
-			if (sockMsg?.Substring(0, 2) != "42")
+			if (string.IsNullOrEmpty(sockMsg)
+				|| sockMsg.Length < 2
+				|| sockMsg?.Substring(0, 2) != "42")
 				return "";
 			try
 			{

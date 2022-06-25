@@ -5,11 +5,10 @@ namespace AlertService.Services.Common
 {
     public class Constants
     {
+        public readonly static string PING = "2";
 
-        public static string PING = "2";
+        public readonly static ArraySegment<byte> PONG = Encoding.ASCII.GetBytes("3");
 
-        public static ArraySegment<byte> PONG = Encoding.ASCII.GetBytes("3");
-
-        public static ArraySegment<byte> HANDSHAKE = Encoding.ASCII.GetBytes("40");
+        public readonly static ArraySegment<byte> HANDSHAKE = Encoding.ASCII.GetBytes("40");
     }
 }

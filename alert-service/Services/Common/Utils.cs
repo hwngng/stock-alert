@@ -20,6 +20,11 @@ namespace AlertService.Services.Common
 
 			return (long)tOffset.TotalSeconds;
 		}
+
+		public static decimal GetChangeRatio(decimal before, decimal current)
+		{
+			return (current - before) / before;
+		}
 	}
 
 	public class NullableConverterFactory : JsonConverterFactory
@@ -63,7 +68,7 @@ namespace AlertService.Services.Common
 		public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 		{
 			if (typeToConvert == typeof(DateTime)) {
-				return DateTime.Parse(reader.GetString() ?? string.Empty);
+				return DateTime.SpecifyKind(DateTime.Parse(reader.GetString() ?? string.Empty), DateTimeKind.Utc);
 			}
 			return JsonSerializer.Deserialize<DateTime>(ref reader, options);
 		}

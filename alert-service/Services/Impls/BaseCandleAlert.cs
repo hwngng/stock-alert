@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using AlertService.Services.Hubs;
 using AlertService.Services.Interfaces;
 using AlertService.Services.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -10,22 +12,80 @@ namespace AlertService.Services.Impls
 {
 	public abstract class BaseCandleAlert : IHandleMessage
 	{
-        private readonly IConfiguration _config;
-        private readonly ILogger<DataProvider> _logger;
-        private readonly IDataProvider _dataHub;
-        private readonly Dictionary<string, Stock> _data;
-        private readonly Dictionary<string, Message>  _lastScanPrice;
+		protected readonly IConfiguration _config;
+		protected readonly ILogger<DataProvider> _logger;
+		protected readonly IDataProvider _dataProvider;
+		protected readonly Dictionary<string, SMAGeneral> _lastScanPrice;
+		protected readonly IHubContext<AlertHub, IAlert> _alertHub;
 
-        public BaseCandleAlert (IConfiguration config, ILogger<DataProvider> logger, IDataProvider dataHub) {
-            _config = config;
-            _logger = logger;
-            _dataHub = dataHub;
-            _data = new Dictionary<string, Stock>();
-            _lastScanPrice = new Dictionary<string, Message>();
-        }
-
-        protected abstract void PrepareData (List<string> codes, DateTime startFrom, DateTime? toDate = null);
+		public BaseCandleAlert(IConfiguration config,
+								ILogger<DataProvider> logger,
+								IDataProvider dataProvider,
+								IHubContext<AlertHub, IAlert> alertHub)
+		{
+			_config = config;
+			_logger = logger;
+			_dataProvider = dataProvider;
+			_lastScanPrice = new Dictionary<string, SMAGeneral>();
+			_alertHub = alertHub;
+		}
 
 		public abstract Task ProcessMessage(SocketMessage msg);
+
+		protected List<OHLCV> getLastNTradingDay(List<OHLCV> ohlcs, SMAGeneral sma, int n)
+		{
+			if (n > ohlcs.Count)
+				n = ohlcs.Count;
+			var from = ohlcs.Count - n >= 0 ? ohlcs.Count - n : 0;
+			if (sma is null)
+			{
+				return ohlcs.GetRange(from, n);
+			}
+			var last = ohlcs[ohlcs.Count - 1];
+			OHLCV currentOhlc = null;
+			if (last.Date.Date == DateTime.UtcNow.Date)
+			{       // take open price
+				currentOhlc = last.CreateCopy();
+			}
+			else
+			{
+				currentOhlc = new OHLCV();
+				currentOhlc.Open = sma.MatchPrice.Value;
+			}
+			currentOhlc.Close = sma.MatchPrice.Value;
+			currentOhlc.High = sma.DayHigh.Value;
+			currentOhlc.Low = sma.DayLow.Value;
+			currentOhlc.Volume = sma.AccumulatedVol.Value;
+
+
+			var lastN = ohlcs.GetRange(from, n - 1);
+			lastN.Add(currentOhlc);
+
+			return lastN;
+		}
+
+		protected void addAlertIfNotNull(List<Alert> alerts, Alert added)
+		{
+			if (!(added is null))
+				alerts.Add(added);
+		}
+
+		protected void addAlertIfNotNull(List<Alert> alerts, List<Alert> added)
+		{
+			if (!(added is null))
+				alerts.AddRange(added);
+		}
+
+		public Alert CreateAlert(string symbol, string message)
+		{
+			return string.IsNullOrEmpty(message) ?
+					null
+					: new Alert
+					{
+						Symbol = symbol,
+						Message = message,
+						PublishedAt = DateTime.UtcNow
+					};
+		}
 	}
 }

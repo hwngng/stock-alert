@@ -227,7 +227,7 @@ namespace AlertService.Services.Common
 			_fieldSeparator = "|";
 		}
 
-		public static Message Parse(string decodedMessage, string messageNamespace)
+		public static Message Parse(string decodedMessage, string messageNamespace, List<string> expectMsgTypes = null)
 		{
 			// min string of parseable message is 5 -> 
 			if (decodedMessage is null
@@ -239,6 +239,8 @@ namespace AlertService.Services.Common
 			if (msgArr.Length < 3)
 				return null;
 			var msgType = msgArr[0];
+            if (!expectMsgTypes.Contains(msgType))
+                return null;
 			var stockType = msgArr[2];
 			var className = $"{msgType}_{stockType}";
 			Message msgObj;

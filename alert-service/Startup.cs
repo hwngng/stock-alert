@@ -15,8 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-
+using Microsoft.Extensions.Caching.Distributed;
 namespace AlertService
 {
     public class Startup
@@ -33,12 +32,28 @@ namespace AlertService
         {
             services.AddLogging();
             // var wsSettings = JsonSerializer.Deserialize<WebSocketSettings>(Configuration.GetValue<string>("WebSocket"));
+            services.AddCors(o => o.AddPolicy("CorsPolicy", builder =>
+            {
+                builder.AllowAnyOrigin()
+                       .AllowAnyMethod()
+                       .AllowAnyHeader()
+                       .AllowCredentials()
+                       .WithOrigins("http://localhost:3000");;
+            }));
             var wsSettings = new WebSocketSettings();
             // wsSettings.SubStocks = Configuration.GetValue<List<string>>("WebSocket:SubStocks");
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = "localhost:6379";
+                options.InstanceName = "AlertService_";
+            });
             Configuration.GetSection("WebSocket").Bind(wsSettings);
             services.AddSingleton(wsSettings);
             services.AddSingleton<IWebSocketHub, WebSocketHub>();
-			services.AddSingleton<IHandleMessage, TestAlert>();
+			// services.AddSingleton<IHandleMessage, TestAlert>();
+            // services.AddSingleton<IHandleMessage, BasicCandle>();
+            services.AddSingleton<IHandleMessage, ComplexCandle>();
+            services.AddSingleton<ComplexCandle>();
 			services.AddSingleton<IDistributeMessage, DistributeMessage>();
 			// services.AddSingleton<IHandleMessage, Test2Alert>();
 			services.AddSingleton<IDataProvider, DataProvider>();
@@ -58,6 +73,7 @@ namespace AlertService
             app.UseHttpsRedirection();
 
             app.UseRouting();
+            app.UseCors("CorsPolicy");
 
             app.UseAuthorization();
 

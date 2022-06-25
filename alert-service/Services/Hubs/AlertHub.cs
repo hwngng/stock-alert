@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AlertService.Services.Models;
 using Microsoft.AspNetCore.SignalR;
@@ -15,6 +17,12 @@ namespace AlertService.Services.Hubs
 		{
 			await Clients.All.Alert(alert);
 		}
-
+        public async Task SendAlerts(List<Alert> alerts)
+		{
+            var tasks = alerts.Select(async alert => {
+                await Clients.All.Alert(alert);
+            });
+			await Task.WhenAll(tasks);
+		}
 	}
 }
