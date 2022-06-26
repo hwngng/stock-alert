@@ -1,5 +1,5 @@
 export default function bearishEngulfing(dataSeries) {
-	const resultCandles = [];
+	const resultPatterns = [];
 	const isBearishEngulfingCandles = function(tradingDay1, tradingDay2) {
 		if (tradingDay1.close <= tradingDay1.open) return false;
 		if (tradingDay2.close >= tradingDay2.open) return false;
@@ -16,13 +16,11 @@ export default function bearishEngulfing(dataSeries) {
 	if (dataSeries.length >= 3) {
 		for (let i = 1; i < dataSeries.length; ++i) {
 			if (isBearishEngulfingCandles(dataSeries[i-1], dataSeries[i])) {
-				resultCandles.push(dataSeries[i-1].date);
-				resultCandles.push(dataSeries[i].date);
+				resultPatterns.push([dataSeries[i-1], dataSeries[i]]);
 				i += 2;
 			}
 		}
 	}
-	console.log(resultCandles)
-	return resultCandles;
+	return resultPatterns;
 }
 

@@ -37,6 +37,8 @@ import { ema, stochasticOscillator, bollingerBand } from "../../../react-stockch
 import { fitWidth } from "../../../react-stockcharts/lib/helper";
 import { last } from "../../../react-stockcharts/lib/utils";
 import { LabelAnnotation, Label, Annotate } from "../../../react-stockcharts/lib/annotation";
+import { Brush } from "../../../react-stockcharts/lib/interactive";
+import Helper from "../../../common/helper";
 
 const bbAppearance = {
 	stroke: {
@@ -65,6 +67,7 @@ const annotationProps = {
 	opacity: 0.8,
 	text: "\u{1F82F}",
 	y: ({ yScale }) => yScale.range()[1] - 10,
+	x: ({ xScale, xAccessor, datum }) => xScale(xAccessor(datum)) - 15,
 	onClick: (e) => console.log(e),
 	tooltip: (d) => timeFormat("%B")(d.date),
 	onMouseOver: e => console.log(e),
@@ -132,11 +135,19 @@ class CandleStickChartHighlightCandle extends React.Component {
 		};
 	}
 
+	isAnnoted(highlightPatterns, d) {
+		let pattern = highlightPatterns.find(x => x.find(x => x.date == d.date));
+		if (!pattern)
+			return false;
+		let datePattern = Helper.getMedium(pattern);
+		return datePattern.date == d.date;
+	}
+
 	render() {
 		const totalHeight = 700;
 		const priceHeight = 600;
 		const volHeight = totalHeight - priceHeight;
-		const { type, data: initialData, width, ratio, highlightCandle, code } = this.props;
+		const { type, data: initialData, width, ratio, highlightPatterns, code } = this.props;
 		let { mouseMoveEvent, panEvent, zoomEvent, zoomAnchor, clamp } = this.props;
 		const margin = { left: 50, right: 70, top: 20, bottom: 30 };
 
@@ -205,8 +216,8 @@ class CandleStickChartHighlightCandle extends React.Component {
 					padding={{ top: 120, bottom: 150 }}
 				>
 					<YAxis axisAt="right" orient="right" ticks={10}
-						stroke="#000000" zoomEnabled={zoomEvent} {...yGrid}/>
-					<XAxis axisAt="bottom" orient="bottom" 
+						stroke="#000000" zoomEnabled={zoomEvent} {...yGrid} />
+					<XAxis axisAt="bottom" orient="bottom"
 						stroke="#000000" opacity={0.2} zoomEnabled={zoomEvent} {...xGrid} />
 
 					<MouseCoordinateY
@@ -216,20 +227,27 @@ class CandleStickChartHighlightCandle extends React.Component {
 
 					<CandlestickSeriesHighlightCandle
 						{...candleAppearance}
-						highlightCandle={highlightCandle}
-						highlightStroke="#000000"
-						highlightBrightnessInc={0.7} />
+						highlightPatterns={highlightPatterns}
+						highlightBrightnessInc={0.7}
+						offsetRight={15} />
 
-					<LineSeries yAccessor={ema20.accessor()} stroke={ema20.stroke()} />
-					<LineSeries yAccessor={ema50.accessor()} stroke={ema50.stroke()} />
+					{/* <LineSeries yAccessor={ema20.accessor()} stroke={ema20.stroke()} />
+					<LineSeries yAccessor={ema50.accessor()} stroke={ema50.stroke()} /> */}
 
 					{/* <BollingerSeries yAccessor={d => d.bb}
 						{...bbAppearance} /> */}
-					<CurrentCoordinate yAccessor={ema20.accessor()} fill={ema20.stroke()} />
-					<CurrentCoordinate yAccessor={ema50.accessor()} fill={ema50.stroke()} />
+					{/* <CurrentCoordinate yAccessor={ema20.accessor()} fill={ema20.stroke()} />
+					<CurrentCoordinate yAccessor={ema50.accessor()} fill={ema50.stroke()} /> */}
 
 					<EdgeIndicator itemType="last" orient="right" edgeAt="right"
 						yAccessor={d => d.close} fill={d => d.close > d.open ? "#46ad82" : "#DB0000"} />
+
+					{/* <Brush
+						// ref={this.saveInteractiveNode(3)}
+						enabled={true}
+						type={"2D"}
+						// onBrush={this.handleBrush3}
+					/> */}
 
 					<OHLCTooltip origin={[-40, -10]} />
 					{/* <MovingAverageTooltip
@@ -325,13 +343,13 @@ class CandleStickChartHighlightCandle extends React.Component {
 					/> */}
 					<Annotate
 						with={LabelAnnotation}
-						when={(d) => highlightCandle.includes(d.date)}
+						when={(d) => this.isAnnoted(highlightPatterns, d)}
 						usingProps={annotationProps}
 					/>
 					<ZoomButtons
 						onReset={this.handleReset}
 					/>
-					<HoverTooltip
+					{/* <HoverTooltip
 						yAccessor={ema50.accessor()}
 						tooltipContent={this.tooltipContent([
 							{
@@ -348,7 +366,7 @@ class CandleStickChartHighlightCandle extends React.Component {
 							}
 						])}
 						fontSize={15}
-					/>
+					/> */}
 				</Chart>
 				<Chart id={2}
 					yExtents={d => d.volume}

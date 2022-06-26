@@ -573,8 +573,7 @@ export default class StockTicker extends Component {
             }
         );
         socket.on('connect', () => {
-            console.info('Connected successfully');
-            this.setState({ loading: false });
+            console.info('Connected successfully to data service');
         });
 
         socket.on('s', (message) => {

@@ -1,6 +1,7 @@
 module.exports = {
 	dataServiceHost: 'http://localhost:9876',
 	webApiHost: 'http://localhost:65049',
+	alertServiceHost: 'https://localhost:5001',
 	exchanges: {
 		'10': 'HOSE',
 		'02': 'HNX',

@@ -1,10 +1,12 @@
 import axios from 'axios';
 import React, { Component } from 'react';
+import { HubConnectionBuilder, } from '@microsoft/signalr';
 import { NotificationContainer, NotificationManager } from 'react-notifications';
 import 'react-notifications/lib/notifications.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGear } from '@fortawesome/free-solid-svg-icons'
 import AlertSettings from '../AlertSettings';
+import alertServiceApi from '../../../common/api/alertServiceApi';
 
 export default class StockAlert extends Component {
 
@@ -72,6 +74,39 @@ export default class StockAlert extends Component {
         };
 
         this.apiRequestIntervalID = 0;
+    }
+
+    connect() {
+        let connection = new HubConnectionBuilder()
+            .withUrl((new URL(alertServiceApi.realtime.path, this.config['alertServiceHost'])).toString())
+            .withAutomaticReconnect()
+            // .configureLogging(LogLevel.Trace)
+            .build();
+
+        connection.onclose(
+            (e) => {
+                if (e) {
+                    console.error('Connection closed with error: ' + e);
+                }
+                else {
+                    console.info('Disconnected');
+                }
+            }
+        );
+
+        connection.on("Alert", (message) => {
+            console.log(message);
+        });
+
+        connection.start()
+            .then(() => {
+                console.info('Connected successfully to alert service');
+            })
+            .catch(err => {
+                console.error(err.toString());
+            });
+
+        return connection;
     }
 
     showAlert(type, stockCode) {
@@ -169,6 +204,7 @@ export default class StockAlert extends Component {
     componentDidMount() {
         let stockAlert = this;
         // this.apiRequestIntervalID = setInterval(this.stockAlertSchedule, 1500, stockAlert);
+        this.connect();
     }
 
     componentWillUnmount() {

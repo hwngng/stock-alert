@@ -25,7 +25,9 @@ const Helper = {
 		return "";
 	},
 	// get medium from sorted fragment of array [start, end]
-	getMedium: function (arr, start, end) {
+	getMedium: function (arr, start = 0, end = -1) {
+		if (!arr) return null;
+		if (end < 0) end = arr.length - 1;
 		return arr[Math.floor((start + end) / 2)];
 	},
 	// remove adjacent element from array. Take medium.

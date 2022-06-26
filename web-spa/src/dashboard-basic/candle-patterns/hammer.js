@@ -1,5 +1,5 @@
 export default function hammerCandle(dataSeries) {
-	const resultCandles = [];
+	const resultPatterns = [];
 	const isHammerCandle = function(tradingDay) {
 		let result = true;
 		let upper = tradingDay.close;
@@ -24,10 +24,10 @@ export default function hammerCandle(dataSeries) {
 
 	dataSeries.forEach(day => {
 		if (isHammerCandle(day)) {
-			resultCandles.push(day.date);
+			resultPatterns.push([day]);
 		}
 	})
 
-	return resultCandles;
+	return resultPatterns;
 }
 

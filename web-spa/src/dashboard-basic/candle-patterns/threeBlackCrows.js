@@ -1,5 +1,5 @@
 export default function threeBlackCrows(dataSeries) {
-	const resultCandles = [];
+	const resultPatterns = [];
 	const isThreeBlackCrowsCandles = function(tradingDay1, tradingDay2, tradingDay3) {
 		if (tradingDay1.close >= tradingDay1.open) return false;
 		if (tradingDay2.close >= tradingDay2.open) return false;
@@ -23,14 +23,11 @@ export default function threeBlackCrows(dataSeries) {
 	if (dataSeries.length >= 3) {
 		for (let i = 2; i < dataSeries.length; ++i) {
 			if (isThreeBlackCrowsCandles(dataSeries[i-2], dataSeries[i-1], dataSeries[i])) {
-				resultCandles.push(dataSeries[i-2].date);
-				resultCandles.push(dataSeries[i-1].date);
-				resultCandles.push(dataSeries[i].date);
+				resultPatterns.push([dataSeries[i-2], dataSeries[i-1], dataSeries[i]]);
 				i += 3;
 			}
 		}
 	}
-	console.log(resultCandles);
-	return resultCandles;
+	return resultPatterns;
 }
 

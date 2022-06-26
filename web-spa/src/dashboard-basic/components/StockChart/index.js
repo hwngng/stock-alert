@@ -16,6 +16,7 @@ import dataServiceApi from '../../../common/api/dataServiceApi';
 import { Modal, Form } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
+import Helper from '../../../common/helper';
 
 export default class StockChart extends Component {
     constructor(props) {
@@ -27,7 +28,7 @@ export default class StockChart extends Component {
             plotData: undefined,
             stockInfo: {},
             type: 'hybrid',
-            highlightCandles: [],
+            highlightPatterns: [],
             isShowModal: false,
             highlightOptions: {},
             selectValue: ''
@@ -143,58 +144,58 @@ export default class StockChart extends Component {
 
     onHammerSelect(event) {
         const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = hammerCandle(plotData);
-        this.setState({ highlightCandles })
+        let { highlightPatterns } = this.state;
+        highlightPatterns = hammerCandle(plotData);
+        this.setState({ highlightPatterns })
     }
 
     onInvertedHammerSelect(event) {
         const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = invertedHammerCandle(plotData);
-        this.setState({ highlightCandles })
+        let { highlightPatterns } = this.state;
+        highlightPatterns = invertedHammerCandle(plotData);
+        this.setState({ highlightPatterns })
     }
 
     onMorningStarSelect(event) {
         const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = morningStar(plotData);
-        this.setState({ highlightCandles })
+        let { highlightPatterns } = this.state;
+        highlightPatterns = morningStar(plotData);
+        this.setState({ highlightPatterns })
     }
 
     onEveningStarSelect(event) {
         const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = eveningStar(plotData);
-        this.setState({ highlightCandles })
+        let { highlightPatterns } = this.state;
+        highlightPatterns = eveningStar(plotData);
+        this.setState({ highlightPatterns })
     }
 
     onBullishEngulfingSelect(event) {
         const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = bullishEngulfing(plotData);
-        this.setState({ highlightCandles })
+        let { highlightPatterns } = this.state;
+        highlightPatterns = bullishEngulfing(plotData);
+        this.setState({ highlightPatterns })
     }
 
     onBearishEngulfingSelect(event) {
         const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = bearishEngulfing(plotData);
-        this.setState({ highlightCandles })
+        let { highlightPatterns } = this.state;
+        highlightPatterns = bearishEngulfing(plotData);
+        this.setState({ highlightPatterns })
     }
 
     onThreeWhiteSolidersSelect(event) {
         const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = threeWhiteSoldiers(plotData);
-        this.setState({ highlightCandles })
+        let { highlightPatterns } = this.state;
+        highlightPatterns = threeWhiteSoldiers(plotData);
+        this.setState({ highlightPatterns })
     }
 
     onThreeBlackCrowsSelect(event) {
         const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = threeBlackCrows(plotData);
-        this.setState({ highlightCandles })
+        let { highlightPatterns } = this.state;
+        highlightPatterns = threeBlackCrows(plotData);
+        this.setState({ highlightPatterns })
     }
 
     handleCloseModalChild(event) {
@@ -223,7 +224,9 @@ export default class StockChart extends Component {
     }
 
     render() {
-        const { plotData, stockInfo, type, highlightCandles, isShowModal } = this.state;
+        const { plotData, stockInfo, type, highlightPatterns, isShowModal } = this.state;
+        // const highlightAccumulated = Helper.accumulateAdjPoint(highlightPatterns, 24*60*60*1000000);
+        console.log(highlightPatterns);
         let content = <></>;
 
         if (!stockInfo || !stockInfo['symbol']) {
@@ -238,9 +241,9 @@ export default class StockChart extends Component {
             content = (
                 <>
                     <div className="container-xxl pattern-select">
-                        <div class="row">
+                        <div className="row">
                             <div id="chart" className="stockchart col-10">
-                                <CandleStickChartHighlightCandle type={type} code={stockInfo['symbol']} exchangeTitle={this.exchanges[stockInfo['exchange_code']]} data={plotData} highlightCandle={highlightCandles} />
+                                <CandleStickChartHighlightCandle type={type} code={stockInfo['symbol']} exchangeTitle={this.exchanges[stockInfo['exchange_code']]} data={plotData} highlightPatterns={highlightPatterns} />
                             </div>
                             <div className="highlight col-2">
                                 <div className="">

@@ -9,8 +9,9 @@ import GenericChartComponent from "../GenericChartComponent";
 import { getAxisCanvas } from "../GenericComponent";
 
 import {
-	hexToRGBA, isDefined, functor, plotDataLengthBarWidth, head
+	hexToRGBA, isDefined, functor, plotDataLengthBarWidth, head, getStrokeDasharray
 } from "../utils";
+import { last } from "lodash";
 
 class CandlestickSeriesHighlightCandle extends Component {
 	constructor(props) {
@@ -75,7 +76,13 @@ CandlestickSeriesHighlightCandle.propTypes = {
 		PropTypes.string
 	]),
 	yAccessor: PropTypes.func,
+	offsetRight: PropTypes.number,
 	clip: PropTypes.bool,
+	highlightStroke: PropTypes.string,
+	highligthFill: PropTypes.string,
+	highlightStrokeOpacity: PropTypes.number,
+	highlightFillOpacity: PropTypes.number,
+	highlightStrokeDashArray: PropTypes.string
 };
 
 CandlestickSeriesHighlightCandle.defaultProps = {
@@ -89,16 +96,20 @@ CandlestickSeriesHighlightCandle.defaultProps = {
 	// wickStroke: d => d.close > d.open ? "#6BA583" : "#FF0000",
 	fill: d => d.close > d.open ? "#6BA583" : "#FF0000",
 	// stroke: d => d.close > d.open ? "#6BA583" : "#FF0000",
+	offsetRight: 15,
 	stroke: "#000000",
-	highlightStroke: "#000000",
-	highlightFill: "#90ee90",
 	highlightBrightnessInc: 0.5,
 	candleStrokeWidth: 0.5,
 	// stroke: "none",
 	widthRatio: 0.8,
 	opacity: 1,
 	clip: true,
-	highlightCandle: []
+	highlightCandle: [],
+	highlightStroke: "#000000",
+	highlightFillOpacity: 0.3,
+	highlightStrokeOpacity: 1,
+	highlightFill: "#ffffff",
+	highlightStrokeDashArray: "ShortDash",
 };
 
 function getWicksSVG(candleData) {
@@ -145,12 +156,12 @@ function getCandlesSVG(props, candleData) {
 }
 
 function drawOnCanvas(ctx, props, moreProps) {
-	const { opacity, candleStrokeWidth, highlightCandle, highlightBrightnessInc } = props;
+	const { opacity, candleStrokeWidth, highlightPatterns, highlightBrightnessInc } = props;
 	const { xScale, chartConfig: { yScale }, plotData, xAccessor } = moreProps;
 
 	// const wickData = getWickData(props, xAccessor, xScale, yScale, plotData);
-	const highlightData = highlightCandle.map(x => new Date(x).getTime());
-	const candleData = getCandleData(props, xAccessor, xScale, yScale, plotData, highlightData);
+	// const highlightPatterns = highlightPatterns.map(x => new Date(x).getTime());
+	const { candles: candleData, rects: highlightRects } = getCandleData(props, xAccessor, xScale, yScale, plotData, highlightPatterns);
 
 	const wickNest = nest()
 		.key(d => d.wick.stroke)
@@ -180,20 +191,20 @@ function drawOnCanvas(ctx, props, moreProps) {
 
 			ctx.fillRect(d.x - wickOffset, d.y1, wickWidth, d.y2 - d.y1);
 			ctx.fillRect(d.x - wickOffset, d.y3, wickWidth, d.y4 - d.y3);
-			if (each.isHighlighted) {
-				let range = yScale.range();
-				let radius = yScale(0) - yScale(0.09);
-				let distance = yScale(0) - yScale(0.5);
-				// canvas_arrow(ctx, d.x - 0.5, d.y1 - 35, d.x - 0.5, d.y1 - 12);
-				if (d.y1 > (range[0] + range[1]) / 2) {
-					canvas_circle(ctx, d.x - 0.5, d.y1 - distance, radius, '#000000');
-				} else {
-					canvas_circle(ctx, d.x - 0.5, d.y4 + distance, radius, '#000000');
+			// if (each.isHighlighted) {
+			// 	let range = yScale.range();
+			// 	let radius = yScale(0) - yScale(0.09);
+			// 	let distance = yScale(0) - yScale(0.5);
+			// 	// canvas_arrow(ctx, d.x - 0.5, d.y1 - 35, d.x - 0.5, d.y1 - 12);
+			// 	if (d.y1 > (range[0] + range[1]) / 2) {
+			// 		canvas_circle(ctx, d.x - 0.5, d.y1 - distance, radius, '#000000');
+			// 	} else {
+			// 		canvas_circle(ctx, d.x - 0.5, d.y4 + distance, radius, '#000000');
 
-				}
-				// ctx.strokeRect(d.x - wickOffset, d.y1, wickWidth, d.y2 - d.y1);
-				// ctx.strokeRect(d.x - wickOffset, d.y3, wickWidth, d.y4 - d.y3);
-			}
+			// 	}
+			// 	// ctx.strokeRect(d.x - wickOffset, d.y1, wickWidth, d.y2 - d.y1);
+			// 	// ctx.strokeRect(d.x - wickOffset, d.y3, wickWidth, d.y4 - d.y3);
+			// }
 		});
 	});
 
@@ -219,7 +230,7 @@ function drawOnCanvas(ctx, props, moreProps) {
 			ctx.fillStyle = fillStyle;
 
 			values.forEach(d => {
-				ctx.fillStyle = d.isHighlighted ? increaseBrightness(key, highlightBrightnessInc) : key;
+				ctx.fillStyle = d.isHighlighted ? increaseBrightness(key, highlightBrightnessInc) : key;;
 				// if (d.isHighlighted) debugger
 				if (d.width <= 1) {
 					// <line className={d.className} key={idx} x1={d.x} y1={d.y} x2={d.x} y2={d.y + d.height}/>
@@ -253,6 +264,22 @@ function drawOnCanvas(ctx, props, moreProps) {
 			});
 		});
 	});
+
+	const { highlightStroke, highlightFill, highlightStrokeDashArray } = props;
+	const { highlightStrokeOpacity, highlightFillOpacity } = props;
+	const padding = { vertical: 8, horizontal: 2 }
+
+	const dashArray = getStrokeDasharray(highlightStrokeDashArray)
+		.split(",")
+		.map(d => +d);
+
+	ctx.strokeStyle = hexToRGBA(highlightStroke, highlightStrokeOpacity);
+	ctx.fillStyle = hexToRGBA(highlightFill, highlightFillOpacity);
+	ctx.setLineDash(dashArray);
+
+	highlightRects.forEach(rect => {
+		drawHighlightRect(ctx, rect, padding);
+	})
 }
 /*
 function getWickData(props, xAccessor, xScale, yScale, plotData) {
@@ -314,9 +341,9 @@ function canvas_circle(ctx, centerX, centerY, radius, stroke) {
 	ctx.lineWidth = origWidth;
 }
 
-function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightData) {
+function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightPatterns) {
 
-	const { wickStroke: wickStrokeProp } = props;
+	const { wickStroke: wickStrokeProp, offsetRight } = props;
 	const wickStroke = functor(wickStrokeProp);
 
 	const { classNames, fill: fillProp, stroke: strokeProp, yAccessor } = props;
@@ -343,16 +370,19 @@ function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightData
 
 	// eslint-disable-next-line prefer-const
 	let candles = [];
+	let rects = [];
+	let isCurrentHighlighted = [];
 
 	for (let i = 0; i < plotData.length; i++) {
 		const d = plotData[i];
 		if (isDefined(yAccessor(d).close)) {
-			const x = Math.round(xScale(xAccessor(d))) - 15;
+			const x = Math.round(xScale(xAccessor(d))) - offsetRight;
 			// const x = Math.round(xScale(xAccessor(d)) - offset);
 
 			const ohlc = yAccessor(d);
 			const y = Math.round(yScale(Math.max(ohlc.open, ohlc.close)));
 			const height = Math.round(Math.abs(yScale(ohlc.open) - yScale(ohlc.close)));
+			isCurrentHighlighted = isHighlighted(d, highlightPatterns);
 
 			candles.push({
 				// type: "line"
@@ -372,21 +402,49 @@ function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightData
 				fill: fill(ohlc),
 				stroke: stroke(ohlc),
 				direction: (ohlc.close - ohlc.open),
-				isHighlighted: isHighlighted(d, highlightData)
+				isHighlighted: isCurrentHighlighted ? true : false
 			});
+
+			let patterns = getPatterns(d, highlightPatterns);
+			if (patterns) {
+				let appendRects = patterns.map(pattern => {
+					let currentRect = {};
+					currentRect['start'] = currentRect['max'] = pattern[0];
+					currentRect['end'] = pattern[pattern.length - 1];
+					currentRect['end']['index'] = d['idx']['index'] + pattern.length - 1;
+					for (let i = 1; i < pattern.length; ++i) {
+						if (currentRect['max'].high < pattern[i].high)
+							currentRect['max'].high = pattern[i].high;
+						if (currentRect['max'].low > pattern[i].low)
+							currentRect['max'].low = pattern[i].low;
+					}
+					return {
+						x: x - offset,
+						y: Math.round(yScale(currentRect['max'].high)),
+						width: xScale(currentRect['end']['index']) - xScale(xAccessor(d)) + 2 * offset,
+						height: Math.abs(yScale(currentRect['max'].high) - yScale(currentRect['max'].low))
+					}
+				});
+				rects = rects.concat(appendRects);
+			}
 		}
 	}
 
-	return candles;
+	return { candles, rects };
 }
 
-function isHighlighted(d, highlightData) {
-	const currentCandle = d.date.getTime();
-	// - d.date.getTimezoneOffset() * 60 * 1000
-	// console.log(highlightData.includes(currentCandle));
-	// console.log(currentCandle);
-	// console.log(highlightData);
-	return highlightData.includes(currentCandle);
+function isHighlighted(d, highlightPatterns) {
+	let patterns = highlightPatterns.find(x => x.find(y => y.date == d.date));
+	if (!patterns)
+		return null;
+	return patterns;
+}
+
+function getPatterns(d, highlightPatterns) {
+	let patterns = highlightPatterns.filter(x => x[0].date == d.date);
+	if (!patterns || patterns.length <= 0)
+		return null;
+	return patterns;
 }
 
 function increaseBrightness(hex, percent) {
@@ -407,6 +465,20 @@ function increaseBrightness(hex, percent) {
 		((0 | (1 << 8) + r + (256 - r) * percent / 100).toString(16)).substr(1) +
 		((0 | (1 << 8) + g + (256 - g) * percent / 100).toString(16)).substr(1) +
 		((0 | (1 << 8) + b + (256 - b) * percent / 100).toString(16)).substr(1);
+}
+
+function drawHighlightRect(ctx, rect, padding = { vertical: 0, horizontal: 0 }) {
+	if (rect) {
+		let { x, y, height, width } = rect;
+		x = x - padding.horizontal;
+		y = y - padding.vertical;
+		width = width + 2 * padding.horizontal;
+		height = height + 2 * padding.vertical;
+
+		ctx.beginPath();
+		ctx.fillRect(x, y, width, height);
+		ctx.strokeRect(x, y, width, height);
+	}
 }
 
 export default CandlestickSeriesHighlightCandle;
