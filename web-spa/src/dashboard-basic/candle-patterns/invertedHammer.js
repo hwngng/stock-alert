@@ -26,7 +26,7 @@ export default function invertedHammerCandle(dataSeries) {
 		if (isInvertedHammerCandle(day)) {
 			resultPatterns.push([day]);
 		}
-	})
+	});
 
 	return resultPatterns;
 }

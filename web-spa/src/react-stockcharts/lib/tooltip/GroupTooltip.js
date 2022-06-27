@@ -254,6 +254,7 @@ GroupTooltip.propTypes = {
 		labelFill: PropTypes.string,
 		valueFill: PropTypes.string,
 		withShape: PropTypes.bool, // "withShape" is ignored, if layout is "horizontalInline" or "vertical".
+		tooltipKey: PropTypes.string,
 	} ) ),
 };
 

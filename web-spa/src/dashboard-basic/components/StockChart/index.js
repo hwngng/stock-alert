@@ -23,7 +23,8 @@ export default class StockChart extends Component {
             highlightPatterns: [],
             isShowModal: false,
             highlightOptions: [''],
-            selectValue: ''
+            selectValue: '',
+            newPattern: {}
         };
 
         this.parseDate = timeParse("%Y%m%d");
@@ -56,10 +57,11 @@ export default class StockChart extends Component {
         if (!stockInfo['symbol']) return;
         this.setState({ stockInfo, isShowModal });
 
-        this.dataSvcRequest(dataServiceApi.historyWithCurr.path, {
+        this.dataSvcRequest(dataServiceApi.history.path, {
             method: dataServiceApi.history.method,
             params: {
-                code: stockInfo['symbol'],
+                codes: [stockInfo['symbol']],
+                exchangeCodes: [stockInfo['exchange_code']]
             }
         })
             .then(response => {
@@ -89,10 +91,11 @@ export default class StockChart extends Component {
 
     handleChangeSelect(event, optionIdx) {
         const { highlightOptions, plotData } = this.state;
-        let { highlightPatterns } = this.state;
-        let patternKey = event.target.value;
+        let { highlightPatterns, newPattern } = this.state;
+        let newPatternKey = event.target.value ?? '';
+        newPattern = null;
         if (optionIdx != null) {
-            highlightOptions[optionIdx] = patternKey;
+            highlightOptions[optionIdx] = newPatternKey;
             highlightPatterns = [];
             highlightOptions.forEach(patternKey => {
                 let pattern = patternMap[patternKey];
@@ -102,25 +105,28 @@ export default class StockChart extends Component {
                         p.push(patternKey);
                         return p;
                     })
+                    if (patternKey == newPatternKey && resultPatterns.length > 0)
+                        newPattern = resultPatterns[resultPatterns.length - 1];
                     highlightPatterns = highlightPatterns.concat(resultPatterns);
                 }
             });
             highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
         } else {
-            highlightOptions.push(patternKey)
-            let pattern = patternMap[patternKey];
+            highlightOptions.push(newPatternKey)
+            let pattern = patternMap[newPatternKey];
             if (pattern) {
                 let resultPatterns = pattern.fn(plotData);
                 resultPatterns = resultPatterns.map(p => {
-                    p.push(patternKey);
+                    p.push(newPatternKey);
                     return p;
-                })
+                });
+                if (resultPatterns.length > 0)
+                    newPattern = resultPatterns[resultPatterns.length - 1];
                 highlightPatterns = highlightPatterns.concat(resultPatterns);
                 highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
             }
         }
-        // console.log(highlightPatterns);
-        this.setState({ highlightOptions, highlightPatterns });
+        this.setState({ highlightOptions, highlightPatterns, newPattern });
     }
 
     handleAddPattern(event) {
@@ -134,7 +140,7 @@ export default class StockChart extends Component {
         if (optionIdx == null)
             return;
         const { plotData } = this.state;
-        let { highlightOptions, highlightPatterns } = this.state;
+        let { highlightOptions, highlightPatterns, newPattern } = this.state;
         highlightOptions.splice(optionIdx, 1);
         highlightPatterns = [];
         highlightOptions.forEach(patternKey => {
@@ -149,8 +155,9 @@ export default class StockChart extends Component {
             }
         });
         highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+        newPattern = null;
 
-        this.setState({ highlightOptions, highlightPatterns });
+        this.setState({ highlightOptions, highlightPatterns, newPattern });
     }
 
     renderPatternSelect(optionIdx = null) {
@@ -174,7 +181,7 @@ export default class StockChart extends Component {
     }
 
     render() {
-        const { plotData, stockInfo, type, highlightPatterns, isShowModal, highlightOptions } = this.state;
+        const { plotData, stockInfo, type, highlightPatterns, isShowModal, highlightOptions, newPattern } = this.state;
         // const highlightAccumulated = Helper.accumulateAdjPoint(highlightPatterns, 24*60*60*1000000);
         // console.log(highlightPatterns);
         let content = <></>;
@@ -193,7 +200,15 @@ export default class StockChart extends Component {
                     <div className="container-xxl pattern-select">
                         <div className="row">
                             <div id="chart" className="stockchart col-10">
-                                <CandleStickChartHighlightCandle type={type} code={stockInfo['symbol']} exchangeTitle={this.exchanges[stockInfo['exchange_code']]} data={plotData} highlightPatterns={highlightPatterns} highlightOptions={highlightOptions}/>
+                                <CandleStickChartHighlightCandle
+                                    type={type}
+                                    code={stockInfo['symbol']}
+                                    exchangeTitle={this.exchanges[stockInfo['exchange_code']]}
+                                    data={plotData}
+                                    highlightPatterns={highlightPatterns}
+                                    highlightOptions={highlightOptions}
+                                    focusPattern={newPattern}
+                                />
                             </div>
                             <div className="highlight col-2">
                                 {highlightOptions.length > 0 &&

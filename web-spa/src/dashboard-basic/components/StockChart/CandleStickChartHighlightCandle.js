@@ -89,6 +89,8 @@ class CandleStickChartHighlightCandle extends React.Component {
 			tooltip: (d) => d.patternTitle,
 			onMouseOver: e => console.log(e),
 		};
+		this.focusCandle = null;
+		this.patternCount = {};
 	}
 
 	zoomOnClickAnnotation(datum) {
@@ -99,6 +101,16 @@ class CandleStickChartHighlightCandle extends React.Component {
 		this.setState({
 			suffix: this.state.suffix + 1
 		});
+	}
+
+	zoomOnClickTooltip(tooltipKey, highlightPatterns) {
+		let pattern = highlightPatterns.findLast(pattern => pattern && pattern.length >= 2 && pattern[pattern.length - 1] == tooltipKey);
+		if (pattern) {
+			this.focusCandle = pattern[0];
+			this.setState({
+				suffix: this.state.suffix + 1
+			});
+		}
 	}
 
 	saveNode(node) {
@@ -165,10 +177,11 @@ class CandleStickChartHighlightCandle extends React.Component {
 	}
 
 	render() {
+		const that = this;
 		const totalHeight = 700;
 		const priceHeight = 600;
 		const volHeight = totalHeight - priceHeight;
-		const { type, data: initialData, width, ratio, highlightPatterns, code, highlightOptions } = this.props;
+		const { type, data: initialData, width, ratio, highlightPatterns, code, highlightOptions, focusPattern } = this.props;
 		let { mouseMoveEvent, panEvent, zoomEvent, zoomAnchor, clamp } = this.props;
 		const margin = { left: 50, right: 70, top: 20, bottom: 30 };
 
@@ -179,24 +192,24 @@ class CandleStickChartHighlightCandle extends React.Component {
 		const yGrid = showGrid ? { innerTickSize: -1 * gridWidth, tickStrokeOpacity: 0.1 } : {};
 		const xGrid = showGrid ? { innerTickSize: -1 * gridHeight, tickStrokeOpacity: 0.1 } : {};
 
-		const ema20 = ema()
-			.id(0)
-			.options({ windowSize: 20 })
-			.merge((d, c) => { d.ema20 = c; })
-			.accessor(d => d.ema20);
+		// const ema20 = ema()
+		// 	.id(0)
+		// 	.options({ windowSize: 20 })
+		// 	.merge((d, c) => { d.ema20 = c; })
+		// 	.accessor(d => d.ema20);
 
-		const ema50 = ema()
-			.id(2)
-			.options({ windowSize: 50 })
-			.merge((d, c) => { d.ema50 = c; })
-			.accessor(d => d.ema50);
+		// const ema50 = ema()
+		// 	.id(2)
+		// 	.options({ windowSize: 50 })
+		// 	.merge((d, c) => { d.ema50 = c; })
+		// 	.accessor(d => d.ema50);
 
 		// const bb = bollingerBand()
 		// 	.merge((d, c) => {d.bb = c;})
 		// 	.accessor(d => d.bb);
 
 
-		const calculatedData = ema20(ema50(initialData));
+		// const calculatedData = ema20(ema50(initialData));
 		const xScaleProvider = discontinuousTimeScaleProvider
 			.inputDateAccessor(d => d.date);
 		const {
@@ -207,24 +220,41 @@ class CandleStickChartHighlightCandle extends React.Component {
 		} = xScaleProvider(initialData);
 		let start = xAccessor(last(data)) + 1.5;
 		let end = xAccessor(data[Math.max(0, data.length - 125)]);
-		if (highlightPatterns && highlightPatterns.length > 0) {
-			let lastPattern = highlightPatterns[highlightPatterns.length - 1];
-			let newStart = xAccessor(data.find(x => x.date == lastPattern[0].date)) + 62;
+		if (focusPattern && focusPattern.length > 0) {
+			let newStart = xAccessor(data.find(x => x.date == focusPattern[0].date)) + 62;
 			let newEnd = newStart - 125;
 			if (newStart <= start) {
 				start = newStart;
 				end = newEnd >= 0 ? newEnd : 0;
 			}
 		}
-		let xExtents = [start, end];
 		if (this.xExtentsZoom) {
 			if (this.xExtentsZoom[0] <= start) {
 				xExtents = this.xExtentsZoom;
-				this.xExtentsZoom = null;
 			}
+			this.xExtentsZoom = null;
 		}
+		if (this.focusCandle) {
+			let newStart = xAccessor(data.find(x => x.date == this.focusCandle.date)) + 62;
+			let newEnd = newStart - 125;
+			if (newStart <= start) {
+				start = newStart;
+				end = newEnd >= 0 ? newEnd : 0;
+			}
+			this.focusCandle = null;
+		}
+		let xExtents = [start, end];
 
-		console.log(highlightOptions.filter(options => options));
+		if (highlightPatterns && highlightPatterns.length > 0) {
+			this.patternCount = {};
+			highlightPatterns.forEach(pattern => {
+				let patternKey = pattern[pattern.length - 1];
+				if (patternKey in that.patternCount)
+					that.patternCount[patternKey]++;
+				else
+					that.patternCount[patternKey] = 1;
+			})
+		}
 
 		return (
 			<ChartCanvas
@@ -309,43 +339,44 @@ class CandleStickChartHighlightCandle extends React.Component {
 						layout="vertical"
 						origin={[-38, 15]}
 						verticalSize={20}
-						onClick={e => console.log(e)}
+						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(0, 4).map(options => ({
-							yAccessor: noop,
+							yAccessor: () => this.patternCount[options],
 							yLabel: patternMap[options]?.titleEn,
 							valueFill: patternMap[options]?.stroke,
 							withShape: true,
 							width: 100,
-						}))
-						}
+							tooltipKey: options,
+						}))}
+						displayFormat={n => Math.round(n)}
 					/>
 					<GroupTooltip
 						layout="vertical"
 						origin={[120, 15]}
 						verticalSize={20}
-						onClick={e => console.log(e)}
+						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(4, 8).map(options => ({
-							yAccessor: noop,
+							yAccessor: () => this.patternCount[options],
 							yLabel: patternMap[options]?.titleEn,
 							valueFill: patternMap[options]?.stroke,
 							withShape: true,
 							width: 100,
-						}))
-						}
+						}))}
+						displayFormat={n => Math.round(n)}
 					/>
 					<GroupTooltip
 						layout="vertical"
 						origin={[278, 15]}
 						verticalSize={20}
-						onClick={e => console.log(e)}
+						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(8, 12).map(options => ({
-							yAccessor: noop,
+							yAccessor: () => this.patternCount[options],
 							yLabel: patternMap[options]?.titleEn,
 							valueFill: patternMap[options]?.stroke,
 							withShape: true,
 							width: 100,
-						}))
-						}
+						}))}
+						displayFormat={n => Math.round(n)}
 					/>
 					{/* <Annotate
 						with={LabelAnnotation}
