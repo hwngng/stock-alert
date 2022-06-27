@@ -23,6 +23,7 @@ namespace AlertService.Services.Settings
 			}
 		}
 		public List<string> SubStocks { get; set; }
+		public List<string> ReservedMessageTypes { get; set; }
 		public int RetryHandshake
 		{
 			get

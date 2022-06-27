@@ -35,6 +35,7 @@ export default class StockTicker extends Component {
             isShowChart: false
         };
 
+        this.updateStockObj = {};
         this.socket = null;
         this.config = props.config;
 
@@ -142,87 +143,87 @@ export default class StockTicker extends Component {
         ];
         this.format["SMA"] = {};
         this.format["SMA"]["S"] = this.format["SMA"]["ST"] = [
-            "code",
-            "stockType",
-            "tradingSessionId",
-            "buyForeignQtty",
-            "sellForeignQtty",
-            "highestPrice",
-            "lowestPrice",
-            "accumulatedVal",
-            "accumulatedVol",
-            "matchPrice",
-            "matchQtty",
-            "currentPrice",
-            "currentQtty",
-            "projectOpen",
-            "totalRoom",
-            "currentRoom",
+            "Symbol",
+            "StockType",
+            "TradingSessionId",
+            "ForeignBuyQtty",
+            "ForeignSellQtty",
+            "DayHigh",
+            "DayLow",
+            "AccumulatedVal",
+            "AccumulatedVol",
+            "MatchPrice",
+            "MatchQtty",
+            "CurrentPrice",
+            "CurrentQtty",
+            "ProjectOpen",
+            "TotalRoom",
+            "CurrentRoom"
         ];
         this.format["SBA"] = {};
         this.format["SBA"]["S"] = [
-            "code",
-            "stockType",
-            "bidPrice01",
-            "bidPrice02",
-            "bidPrice03",
-            "bidQtty01",
-            "bidQtty02",
-            "bidQtty03",
-            "offerPrice01",
-            "offerPrice02",
-            "offerPrice03",
-            "offerQtty01",
-            "offerQtty02",
-            "offerQtty03",
-            "totalBidQtty",
-            "totalOfferQtty",
+            "Symbol",
+            "StockType",
+            "BidPrice01",
+            "BidPrice02",
+            "BidPrice03",
+            "BidQtty01",
+            "BidQtty02",
+            "BidQtty03",
+            "AskPrice01",
+            "AskPrice02",
+            "AskPrice03",
+            "AskQtty01",
+            "AskQtty02",
+            "AskQtty03",
+            "TotalBidQtty",
+            "TotalAskQtty"
         ];
         this.format["SBA"]["ST"] = [
-            "code",
-            "stockType",
-            "bidPrice01",
-            "bidPrice02",
-            "bidPrice03",
-            "bidPrice04",
-            "bidPrice05",
-            "bidPrice06",
-            "bidPrice07",
-            "bidPrice08",
-            "bidPrice09",
-            "bidPrice10",
-            "bidQtty01",
-            "bidQtty02",
-            "bidQtty03",
-            "bidQtty04",
-            "bidQtty05",
-            "bidQtty06",
-            "bidQtty07",
-            "bidQtty08",
-            "bidQtty09",
-            "bidQtty10",
-            "offerPrice01",
-            "offerPrice02",
-            "offerPrice03",
-            "offerPrice04",
-            "offerPrice05",
-            "offerPrice06",
-            "offerPrice07",
-            "offerPrice08",
-            "offerPrice09",
-            "offerPrice10",
-            "offerQtty01",
-            "offerQtty02",
-            "offerQtty03",
-            "offerQtty04",
-            "offerQtty05",
-            "offerQtty06",
-            "offerQtty07",
-            "offerQtty08",
-            "offerQtty09",
-            "offerQtty10",
-            "totalBidQtty",
-            "totalOfferQtty",
+            "Symbol",
+            "StockType",
+            "BidPrice01",
+            "BidPrice02",
+            "BidPrice03",
+            "BidPrice04",
+            "BidPrice05",
+            "BidPrice06",
+            "BidPrice07",
+            "BidPrice08",
+            "BidPrice09",
+            "BidPrice10",
+            "BidQtty01",
+            "BidQtty02",
+            "BidQtty03",
+            "BidQtty04",
+            "BidQtty05",
+            "BidQtty06",
+            "BidQtty07",
+            "BidQtty08",
+            "BidQtty09",
+            "BidQtty10",
+            "AskPrice01",
+            "AskPrice02",
+            "AskPrice03",
+            "AskPrice04",
+            "AskPrice05",
+            "AskPrice06",
+            "AskPrice07",
+            "AskPrice08",
+            "AskPrice09",
+            "AskPrice10",
+            "AskQtty01",
+            "AskQtty02",
+            "AskQtty03",
+            "AskQtty04",
+            "AskQtty05",
+            "AskQtty06",
+            "AskQtty07",
+            "AskQtty08",
+            "AskQtty09",
+            "AskQtty10",
+            "TotalBidQtty",
+            "TotalAskQtty"
         ];
         this.format["sep"] = "|";
 
@@ -410,7 +411,7 @@ export default class StockTicker extends Component {
             let snapshots = response.data;
             let stockObjs = snapshots;
             stockObjs = that.standardizeStockObj(stockObjs);
-            stockObjs = that.sortStock(stockObjs);
+            that.sortStock(stockObjs);
             that.reloadSubscribedStocks(stockObjs);
             that.setState({ stockObjs });
         } catch (e) {
@@ -429,10 +430,12 @@ export default class StockTicker extends Component {
         //         }
         //     })
         // }
-        let updateIdx = stockObjs.findIndex(s => s['code'] === stockObj['code']);
+        this.updateStockObj = {};
+        let updateIdx = stockObjs.findIndex(s => s['Symbol'] === stockObj['Symbol']);
         let hasSortField = false;
         Object.keys(stockObjs[updateIdx] ?? {}).forEach(updateKey => {
             if (updateKey in stockObj) {
+                this.updateStockObj[updateKey] = stockObjs[updateIdx][updateKey];
                 stockObjs[updateIdx][updateKey] = stockObj[updateKey];
                 if (updateKey === this.sortBy.fieldName)
                     hasSortField = true;
@@ -442,7 +445,7 @@ export default class StockTicker extends Component {
         if (hasSortField === true) {
             this.sortBy.updateCount++;
         }
-        if (this.sortBy.updateCount > 5) {
+        if (this.sortBy.updateCount > stockObjs.length * 0.05) {
             this.sortStock(stockObjs);
             this.sortBy.updateCount = 0;
         }
@@ -573,8 +576,7 @@ export default class StockTicker extends Component {
             }
         );
         socket.on('connect', () => {
-            console.info('Connected successfully');
-            this.setState({ loading: false });
+            console.info('Connected successfully to data service');
         });
 
         socket.on('s', (message) => {
@@ -1083,7 +1085,7 @@ export default class StockTicker extends Component {
                     </table>
                 </div>
                 {isShowChart ?
-                    (<StockChart config={this.props.config} stock={chartStock} handleCloseModal={this.handleCloseModal.bind(this)}/>)
+                    (<StockChart config={this.props.config} stock={chartStock} handleCloseModal={this.handleCloseModal.bind(this)} />)
                     : (<></>)}
             </div>
         );

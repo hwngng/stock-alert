@@ -3,7 +3,7 @@ namespace AlertService.Services.Models
     public class SMAGeneral: Message
     {
 		public string Symbol { get; set; }              // code
-		public long? TradingSessionId { get; set; }
+		public string TradingSessionId { get; set; }
 		public long? ForeignBuyQtty { get; set; }
 		public long? ForeignSellQtty { get; set; }
 		public decimal? DayHigh { get; set; }                // highestPrice

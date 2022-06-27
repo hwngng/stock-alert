@@ -2,20 +2,13 @@ import React, { Component } from 'react';
 import { timeParse } from "d3-time-format";
 
 import CandleStickChartHighlightCandle from './CandleStickChartHighlightCandle';
-
-import hammerCandle from '../../candle-patterns/hammer';
-import invertedHammerCandle from '../../candle-patterns/invertedHammer';
-import morningStar from '../../candle-patterns/morningStar';
-import eveningStar from '../../candle-patterns/eveningStar';
-import bullishEngulfing from '../../candle-patterns/bullishEngulfing';
-import bearishEngulfing from '../../candle-patterns/bearishEngulfing';
-import threeWhiteSoldiers from '../../candle-patterns/threeWhiteSoldiers';
-import threeBlackCrows from '../../candle-patterns/threeBlackCrows';
 import DataService from '../../../common/request/DataService';
 import dataServiceApi from '../../../common/api/dataServiceApi';
-import { Modal, Form } from 'react-bootstrap';
+import { Modal, Form, Button } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
+import patternMap from '../../../common/patternMap';
 
 export default class StockChart extends Component {
     constructor(props) {
@@ -27,65 +20,16 @@ export default class StockChart extends Component {
             plotData: undefined,
             stockInfo: {},
             type: 'hybrid',
-            highlightCandles: [],
+            highlightPatterns: [],
             isShowModal: false,
-            highlightOptions: {},
-            selectValue: ''
+            highlightOptions: [''],
+            selectValue: '',
+            newPattern: {}
         };
 
         this.parseDate = timeParse("%Y%m%d");
         this.dataSvcRequest = DataService(this.config['dataServiceHost']);
         this.exchanges = this.config['exchanges'];
-        this.patternMap = {
-            hammerCandle: {
-                titleEn: 'Hammer',
-                titleVi: '',
-                stroke: '',
-                fn: hammerCandle
-            },
-            invertedHammerCandle: {
-                titleEn: 'Inverted Hammer',
-                titleVi: '',
-                stroke: '',
-                fn: invertedHammerCandle
-            },
-            morningStar: {
-                titleEn: 'Morning Star',
-                titleVi: '',
-                stroke: '',
-                fn: morningStar
-            },
-            eveningStar: {
-                titleEn: 'Evening Star',
-                titleVi: '',
-                stroke: '',
-                fn: eveningStar
-            },
-            bullishEngulfing: {
-                titleEn: 'Bullish Engulfing',
-                titleVi: '',
-                stroke: '',
-                fn: bullishEngulfing
-            },
-            bearishEngulfing: {
-                titleEn: 'Bearish Engulfing',
-                titleVi: '',
-                stroke: '',
-                fn: bearishEngulfing
-            },
-            threeWhiteSoldiers: {
-                titleEn: 'Three White Soldiers',
-                titleVi: '',
-                stroke: '',
-                fn: threeWhiteSoldiers
-            },
-            threeBlackCrows: {
-                titleEn: 'Three Black Crows',
-                titleVi: '',
-                stroke: '',
-                fn: threeBlackCrows
-            }
-        }
     }
 
     loadChartCode() {
@@ -141,89 +85,105 @@ export default class StockChart extends Component {
             })
     }
 
-    onHammerSelect(event) {
-        const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = hammerCandle(plotData);
-        this.setState({ highlightCandles })
-    }
-
-    onInvertedHammerSelect(event) {
-        const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = invertedHammerCandle(plotData);
-        this.setState({ highlightCandles })
-    }
-
-    onMorningStarSelect(event) {
-        const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = morningStar(plotData);
-        this.setState({ highlightCandles })
-    }
-
-    onEveningStarSelect(event) {
-        const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = eveningStar(plotData);
-        this.setState({ highlightCandles })
-    }
-
-    onBullishEngulfingSelect(event) {
-        const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = bullishEngulfing(plotData);
-        this.setState({ highlightCandles })
-    }
-
-    onBearishEngulfingSelect(event) {
-        const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = bearishEngulfing(plotData);
-        this.setState({ highlightCandles })
-    }
-
-    onThreeWhiteSolidersSelect(event) {
-        const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = threeWhiteSoldiers(plotData);
-        this.setState({ highlightCandles })
-    }
-
-    onThreeBlackCrowsSelect(event) {
-        const { plotData } = this.state;
-        let { highlightCandles } = this.state;
-        highlightCandles = threeBlackCrows(plotData);
-        this.setState({ highlightCandles })
-    }
-
     handleCloseModalChild(event) {
         this.handleCloseModal();
     }
 
-    handleChangeSelect(event) {
-        this.setState({})
+    handleChangeSelect(event, optionIdx) {
+        const { highlightOptions, plotData } = this.state;
+        let { highlightPatterns, newPattern } = this.state;
+        let newPatternKey = event.target.value ?? '';
+        newPattern = null;
+        if (optionIdx != null) {
+            highlightOptions[optionIdx] = newPatternKey;
+            highlightPatterns = [];
+            highlightOptions.forEach(patternKey => {
+                let pattern = patternMap[patternKey];
+                if (pattern) {
+                    let resultPatterns = pattern.fn(plotData);
+                    resultPatterns = resultPatterns.map(p => {
+                        p.push(patternKey);
+                        return p;
+                    })
+                    if (patternKey == newPatternKey && resultPatterns.length > 0)
+                        newPattern = resultPatterns[resultPatterns.length - 1];
+                    highlightPatterns = highlightPatterns.concat(resultPatterns);
+                }
+            });
+            highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+        } else {
+            highlightOptions.push(newPatternKey)
+            let pattern = patternMap[newPatternKey];
+            if (pattern) {
+                let resultPatterns = pattern.fn(plotData);
+                resultPatterns = resultPatterns.map(p => {
+                    p.push(newPatternKey);
+                    return p;
+                });
+                if (resultPatterns.length > 0)
+                    newPattern = resultPatterns[resultPatterns.length - 1];
+                highlightPatterns = highlightPatterns.concat(resultPatterns);
+                highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+            }
+        }
+        this.setState({ highlightOptions, highlightPatterns, newPattern });
     }
 
-    renderPatternSelect() {
+    handleAddPattern(event) {
+        const { highlightOptions } = this.state;
+        if (highlightOptions[highlightOptions.length - 1] != '')
+            highlightOptions.push('');
+        this.setState({ highlightOptions });
+    }
+
+    handleRemovePattern(event, optionIdx) {
+        if (optionIdx == null)
+            return;
+        const { plotData } = this.state;
+        let { highlightOptions, highlightPatterns, newPattern } = this.state;
+        highlightOptions.splice(optionIdx, 1);
+        highlightPatterns = [];
+        highlightOptions.forEach(patternKey => {
+            let pattern = patternMap[patternKey];
+            if (pattern) {
+                let resultPatterns = pattern.fn(plotData);
+                resultPatterns = resultPatterns.map(p => {
+                    p.push(patternKey);
+                    return p;
+                })
+                highlightPatterns = highlightPatterns.concat(resultPatterns);
+            }
+        });
+        highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+        newPattern = null;
+
+        this.setState({ highlightOptions, highlightPatterns, newPattern });
+    }
+
+    renderPatternSelect(optionIdx = null) {
         const that = this;
         const { highlightOptions } = this.state;
-        let options = Object.keys(this.patternMap)?.map(pattern => {
+        let options = Object.keys(patternMap)?.filter(x => !highlightOptions.includes(x) || (optionIdx != null && x == highlightOptions[optionIdx])).map(pattern => {
             return (
-                <option value={pattern}>{`Mẫu hình ${that.patternMap[pattern]['titleEn']}`}</option>
+                <option value={pattern}>{`Mẫu hình ${patternMap[pattern]['titleEn']}`}</option>
             );
         });
 
         return (
-            <Form.Control as="select" aria-label="Default select example" onChange={e => that.handleChangeSelect(e)}>
-                <option>Chọn mẫu hình nến</option>
-                {options}
-            </Form.Control>
+            <div className="select-pattern">
+                <Form.Control className="select" as="select" aria-label="Default select example" onChange={e => that.handleChangeSelect(e, optionIdx)} value={optionIdx != null ? highlightOptions[optionIdx] : ''}>
+                    <option>Chọn mẫu hình nến</option>
+                    {options}
+                </Form.Control>
+                <Button className="control-btn remove" onClick={e => that.handleRemovePattern(e, optionIdx)}><FontAwesomeIcon className="control-icon" icon={faXmark} /></Button>
+            </div>
         );
     }
 
     render() {
-        const { plotData, stockInfo, type, highlightCandles, isShowModal } = this.state;
+        const { plotData, stockInfo, type, highlightPatterns, isShowModal, highlightOptions, newPattern } = this.state;
+        // const highlightAccumulated = Helper.accumulateAdjPoint(highlightPatterns, 24*60*60*1000000);
+        // console.log(highlightPatterns);
         let content = <></>;
 
         if (!stockInfo || !stockInfo['symbol']) {
@@ -238,44 +198,24 @@ export default class StockChart extends Component {
             content = (
                 <>
                     <div className="container-xxl pattern-select">
-                        <div class="row">
+                        <div className="row">
                             <div id="chart" className="stockchart col-10">
-                                <CandleStickChartHighlightCandle type={type} code={stockInfo['symbol']} exchangeTitle={this.exchanges[stockInfo['exchange_code']]} data={plotData} highlightCandle={highlightCandles} />
+                                <CandleStickChartHighlightCandle
+                                    type={type}
+                                    code={stockInfo['symbol']}
+                                    exchangeTitle={this.exchanges[stockInfo['exchange_code']]}
+                                    data={plotData}
+                                    highlightPatterns={highlightPatterns}
+                                    highlightOptions={highlightOptions}
+                                    focusPattern={newPattern}
+                                />
                             </div>
                             <div className="highlight col-2">
-                                <div className="">
-                                    <input type="radio" onChange={this.onHammerSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Hammer</label>
+                                {highlightOptions.length > 0 &&
+                                    highlightOptions.map((select, idx) => this.renderPatternSelect(idx))}
+                                <div>
+                                    <Button className="add-new-pattern-btn" onClick={this.handleAddPattern.bind(this)}>Thêm mẫu hình</Button>
                                 </div>
-                                <div className="">
-                                    <input type="radio" onChange={this.onInvertedHammerSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Inverted Hammer</label>
-                                </div>
-                                <div className="">
-                                    <input type="radio" onChange={this.onMorningStarSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Morning Star</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onEveningStarSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Evening Star</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onBullishEngulfingSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Bullish Engulfing</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onBearishEngulfingSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Bearish Engulfing</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onThreeWhiteSolidersSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Three White Soliders</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onThreeBlackCrowsSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Three Black Crows</label>
-                                </div>
-                                {this.renderPatternSelect()}
                             </div>
                         </div>
                     </div>

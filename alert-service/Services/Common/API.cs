@@ -8,5 +8,6 @@ namespace AlertService.Services.Common
     {
         public static string Snapshot = "stock/snapshot/";
         public static string HistoricalPrice = "stock/history/";
+        public static string HistoricalPriceCurrent = "stock/history/withCurr";
     }
 }

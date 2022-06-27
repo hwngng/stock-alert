@@ -8,16 +8,28 @@ namespace AlertService.Services.Models
 		[JsonPropertyName("dt")]
 		public DateTime Date { get; set; }
 		[JsonPropertyName("open")]
-
-		public float Open { get; set; }
+		public decimal Open { get; set; }
 		[JsonPropertyName("high")]
-		public float High { get; set; }
+		public decimal High { get; set; }
 		[JsonPropertyName("low")]
-		public float Low { get; set; }
+		public decimal Low { get; set; }
 		[JsonPropertyName("close")]
-		public float Close { get; set; }
+		public decimal Close { get; set; }
 		[JsonPropertyName("volume")]
-		public float Volume { get; set; }
+		public decimal Volume { get; set; }
+
+		public OHLCV CreateCopy()
+		{
+			var copy = new OHLCV();
+			copy.Date = this.Date;
+			copy.Open = this.Open;
+			copy.High = this.High;
+			copy.Low = this.Low;
+			copy.Close = this.Close;
+			copy.Volume = this.Volume;
+
+			return copy;
+		}
 	}
 
 	public class OHLCVDataService
@@ -31,14 +43,14 @@ namespace AlertService.Services.Models
 		[JsonPropertyName("dt")]
 		public DateTime Date { get; set; }
 		[JsonPropertyName("open")]
-		public float Open { get; set; }
+		public decimal Open { get; set; }
 		[JsonPropertyName("high")]
-		public float High { get; set; }
+		public decimal High { get; set; }
 		[JsonPropertyName("low")]
-		public float Low { get; set; }
+		public decimal Low { get; set; }
 		[JsonPropertyName("close")]
-		public float Close { get; set; }
+		public decimal Close { get; set; }
 		[JsonPropertyName("volume")]
-		public float Volume { get; set; }
+		public decimal Volume { get; set; }
 	}
 }

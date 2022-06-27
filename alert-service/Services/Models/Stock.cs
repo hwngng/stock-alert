@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace AlertService.Services.Models
@@ -8,5 +9,6 @@ namespace AlertService.Services.Models
 		public string ExchangeCode { get; set; }
 		public List<OHLCV> HistoricalPrice { get; set; }
 		public Message StockFull { get; set; }
+		public DateTime LastSync { get; set; }
 	}
 }
