@@ -91,6 +91,7 @@ class CandleStickChartHighlightCandle extends React.Component {
 		};
 		this.focusCandle = null;
 		this.patternCount = {};
+		this.forceResset = false;
 	}
 
 	zoomOnClickAnnotation(datum) {
@@ -120,6 +121,7 @@ class CandleStickChartHighlightCandle extends React.Component {
 		this.node.resetYDomain();
 	}
 	handleReset() {
+		this.forceResset = true;
 		this.setState({
 			suffix: this.state.suffix + 1
 		});
@@ -218,31 +220,43 @@ class CandleStickChartHighlightCandle extends React.Component {
 			xAccessor,
 			displayXAccessor,
 		} = xScaleProvider(initialData);
-		let start = xAccessor(last(data)) + 1.5;
-		let end = xAccessor(data[Math.max(0, data.length - 125)]);
-		if (focusPattern && focusPattern.length > 0) {
-			let newStart = xAccessor(data.find(x => x.date == focusPattern[0].date)) + 62;
-			let newEnd = newStart - 125;
-			if (newStart <= start) {
-				start = newStart;
-				end = newEnd >= 0 ? newEnd : 0;
+		let defaultStart = xAccessor(last(data)) + 1.5;
+		let defaultEnd = xAccessor(data[Math.max(0, data.length - 125)]);
+		let start = defaultStart;
+		let end = defaultEnd;
+		if (!this.forceResset) {
+			if (focusPattern && focusPattern.length > 0) {
+				let newStart = xAccessor(data.find(x => x.date == focusPattern[0].date)) + 62;
+				let newEnd = newStart - 125;
+				if (newStart <= defaultStart) {
+					start = newStart;
+					end = newEnd >= 0 ? newEnd : 0;
+				}
+			}
+			if (this.xExtentsZoom) {
+				if (this.xExtentsZoom[0] <= defaultStart) {
+					start = this.xExtentsZoom[0];
+					end = this.xExtentsZoom[1];
+				} else {
+					start = defaultStart;
+					end = defaultEnd;
+				}
+				this.xExtentsZoom = null;
+			}
+			if (this.focusCandle) {
+				let newStart = xAccessor(data.find(x => x.date == this.focusCandle.date)) + 62;
+				let newEnd = newStart - 125;
+				if (newStart <= defaultStart) {
+					start = newStart;
+					end = newEnd >= 0 ? newEnd : 0;
+				} else {
+					start = defaultStart;
+					end = defaultEnd;
+				}
+				this.focusCandle = null;
 			}
 		}
-		if (this.xExtentsZoom) {
-			if (this.xExtentsZoom[0] <= start) {
-				xExtents = this.xExtentsZoom;
-			}
-			this.xExtentsZoom = null;
-		}
-		if (this.focusCandle) {
-			let newStart = xAccessor(data.find(x => x.date == this.focusCandle.date)) + 62;
-			let newEnd = newStart - 125;
-			if (newStart <= start) {
-				start = newStart;
-				end = newEnd >= 0 ? newEnd : 0;
-			}
-			this.focusCandle = null;
-		}
+		this.forceResset = false;
 		let xExtents = [start, end];
 
 		if (highlightPatterns && highlightPatterns.length > 0) {
