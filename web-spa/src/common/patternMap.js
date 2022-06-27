@@ -8,6 +8,7 @@ import threeBlackCrows from '../dashboard-basic/candle-patterns/threeBlackCrows'
 import { piercing } from '../dashboard-basic/candle-patterns/piercing';
 import { whiteMarubozu, blackMarubozu } from '../dashboard-basic/candle-patterns/marubozu';
 import { threeInsideUp, threeInsideDown } from '../dashboard-basic/candle-patterns/threeInside';
+import { bullishHarami, bearishHarami } from '../dashboard-basic/candle-patterns/harami';
 
 const patternMap = {
 	hammerCandle: {
@@ -87,6 +88,18 @@ const patternMap = {
 		titleVi: '',
 		stroke: '#ff6347',
 		fn: threeInsideDown
+	},
+	bullishHarami: {
+		titleEn: 'Bullish Harami',
+		titleVi: '',
+		stroke: '#ff6347',
+		fn: bullishHarami
+	},
+	bearishHarami: {
+		titleEn: 'Bearish Harami',
+		titleVi: '',
+		stroke: '#ff6347',
+		fn: bearishHarami
 	}
 }
 
