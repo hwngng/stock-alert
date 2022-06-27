@@ -376,7 +376,7 @@ function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightPatt
 	for (let i = 0; i < plotData.length; i++) {
 		const d = plotData[i];
 		if (isDefined(yAccessor(d).close)) {
-			const x = Math.round(xScale(xAccessor(d))) - offsetRight;
+			const x = Math.round(xScale(xAccessor(d)));// - offsetRight;
 			// const x = Math.round(xScale(xAccessor(d)) - offset);
 
 			const ohlc = yAccessor(d);
@@ -409,9 +409,13 @@ function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightPatt
 			if (patterns) {
 				let appendRects = patterns.map(pattern => {
 					let currentRect = {};
-					currentRect['start'] = currentRect['max'] = pattern[0];
-					currentRect['end'] = pattern[pattern.length - 1];
-					currentRect['end']['index'] = d['idx']['index'] + pattern.length - 1;
+					currentRect['start'] = pattern[0];
+					currentRect['max'] = {
+						high: pattern[0].high,
+						low: pattern[0].low
+					}
+					currentRect['end'] = pattern[pattern.length - 2];
+					currentRect['end']['index'] = d['idx']['index'] + pattern.length - 2;
 					for (let i = 1; i < pattern.length; ++i) {
 						if (currentRect['max'].high < pattern[i].high)
 							currentRect['max'].high = pattern[i].high;

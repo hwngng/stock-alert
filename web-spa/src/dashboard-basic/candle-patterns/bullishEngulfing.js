@@ -13,7 +13,7 @@ export default function bullishEngulfing(dataSeries) {
 		return false;
 	}
 
-	if (dataSeries.length >= 3) {
+	if (dataSeries.length >= 2) {
 		for (let i = 1; i < dataSeries.length; ++i) {
 			if (isBullishEngulfingCandles(dataSeries[i-1], dataSeries[i])) {
 				resultPatterns.push([dataSeries[i-1], dataSeries[i]]);

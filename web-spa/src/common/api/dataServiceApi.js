@@ -14,6 +14,10 @@ const dataServiceApi = {
 	history: {
 		method: 'get',
 		path: '/stock/history'
+	},
+	historyWithCurr: {
+		method: 'get',
+		path: '/stock/history/withCurr'
 	}
 }
 

@@ -39,6 +39,8 @@ import { last } from "../../../react-stockcharts/lib/utils";
 import { LabelAnnotation, Label, Annotate } from "../../../react-stockcharts/lib/annotation";
 import { Brush } from "../../../react-stockcharts/lib/interactive";
 import Helper from "../../../common/helper";
+import patternMap from "../../../common/patternMap";
+import { noop } from "lodash";
 
 const bbAppearance = {
 	stroke: {
@@ -60,19 +62,6 @@ const candleAppearance = {
 	fill: d => d.close > d.open ? "#46ad82" : "#ff3737"
 };
 
-const annotationProps = {
-	fontFamily: "Arial",
-	fontSize: 25,
-	fill: "#060F8F",
-	opacity: 0.8,
-	text: "\u{1F82F}",
-	y: ({ yScale }) => yScale.range()[1] - 10,
-	x: ({ xScale, xAccessor, datum }) => xScale(xAccessor(datum)) - 15,
-	onClick: (e) => console.log(e),
-	tooltip: (d) => timeFormat("%B")(d.date),
-	onMouseOver: e => console.log(e),
-};
-
 const dateFormat = timeFormat("%Y-%m-%d");
 const numberFormat = format(".2f");
 
@@ -84,9 +73,32 @@ class CandleStickChartHighlightCandle extends React.Component {
 			suffix: 1
 		}
 
+		this.xExtentsZoom = null;
 		this.saveNode = this.saveNode.bind(this);
 		this.resetYDomain = this.resetYDomain.bind(this);
 		this.handleReset = this.handleReset.bind(this);
+		this.annotationProps = {
+			fontFamily: "Arial",
+			fontSize: 25,
+			fill: d => d.fillAnnotation,
+			opacity: 0.8,
+			text: "\u{1F82F}",
+			y: ({ yScale }) => yScale.range()[1] - 10,
+			x: ({ xScale, xAccessor, datum }) => xScale(xAccessor(datum)),
+			onClick: (e) => this.zoomOnClickAnnotation(e['datum']),
+			tooltip: (d) => d.patternTitle,
+			onMouseOver: e => console.log(e),
+		};
+	}
+
+	zoomOnClickAnnotation(datum) {
+		let newStart = datum['idx']['index'] + 62;
+		let newEnd = newStart - 125;
+		newEnd = newEnd >= 0 ? newEnd : 0;
+		this.xExtentsZoom = [newStart, newEnd];
+		this.setState({
+			suffix: this.state.suffix + 1
+		});
 	}
 
 	saveNode(node) {
@@ -136,18 +148,27 @@ class CandleStickChartHighlightCandle extends React.Component {
 	}
 
 	isAnnoted(highlightPatterns, d) {
-		let pattern = highlightPatterns.find(x => x.find(x => x.date == d.date));
-		if (!pattern)
+		let patterns = highlightPatterns.filter(x => x.find(y => y.date == d.date));
+		if (!patterns)
 			return false;
-		let datePattern = Helper.getMedium(pattern);
-		return datePattern.date == d.date;
+		let results = patterns.map(pattern => {
+			let datePattern = Helper.getMedium(pattern, 0, pattern.length - 2);
+			let result = datePattern.date == d.date;
+			if (result) {
+				d.fillAnnotation = patternMap[pattern[pattern.length - 1]]?.stroke;
+				d.patternTitle = patternMap[pattern[pattern.length - 1]]?.titleEn;
+				return true;
+			}
+			return false;
+		});
+		return results.find(x => x == true);
 	}
 
 	render() {
 		const totalHeight = 700;
 		const priceHeight = 600;
 		const volHeight = totalHeight - priceHeight;
-		const { type, data: initialData, width, ratio, highlightPatterns, code } = this.props;
+		const { type, data: initialData, width, ratio, highlightPatterns, code, highlightOptions } = this.props;
 		let { mouseMoveEvent, panEvent, zoomEvent, zoomAnchor, clamp } = this.props;
 		const margin = { left: 50, right: 70, top: 20, bottom: 30 };
 
@@ -183,11 +204,27 @@ class CandleStickChartHighlightCandle extends React.Component {
 			xScale,
 			xAccessor,
 			displayXAccessor,
-		} = xScaleProvider(calculatedData);
+		} = xScaleProvider(initialData);
+		let start = xAccessor(last(data)) + 1.5;
+		let end = xAccessor(data[Math.max(0, data.length - 125)]);
+		if (highlightPatterns && highlightPatterns.length > 0) {
+			let lastPattern = highlightPatterns[highlightPatterns.length - 1];
+			let newStart = xAccessor(data.find(x => x.date == lastPattern[0].date)) + 62;
+			let newEnd = newStart - 125;
+			if (newStart <= start) {
+				start = newStart;
+				end = newEnd >= 0 ? newEnd : 0;
+			}
+		}
+		let xExtents = [start, end];
+		if (this.xExtentsZoom) {
+			if (this.xExtentsZoom[0] <= start) {
+				xExtents = this.xExtentsZoom;
+				this.xExtentsZoom = null;
+			}
+		}
 
-		const start = xAccessor(last(data));
-		const end = xAccessor(data[Math.max(0, data.length - 125)]);
-		const xExtents = [start, end];
+		console.log(highlightOptions.filter(options => options));
 
 		return (
 			<ChartCanvas
@@ -212,7 +249,7 @@ class CandleStickChartHighlightCandle extends React.Component {
 				{/* <Label x={margin.right + 20} y={30}
 					fontSize={20} text={code} /> */}
 				<Chart id={1} height={priceHeight}
-					yExtents={[d => [d.high, d.low], ema20.accessor(), ema50.accessor()]}
+					yExtents={[d => [d.high, d.low]]}
 					padding={{ top: 120, bottom: 150 }}
 				>
 					<YAxis axisAt="right" orient="right" ticks={10}
@@ -271,70 +308,44 @@ class CandleStickChartHighlightCandle extends React.Component {
 					<GroupTooltip
 						layout="vertical"
 						origin={[-38, 15]}
-						verticalSize={25}
+						verticalSize={20}
 						onClick={e => console.log(e)}
-						options={[
-							{
-								yAccessor: ema20.accessor(),
-								yLabel: `${ema20.type()}(${ema20.options().windowSize})`,
-								valueFill: ema20.stroke(),
-								withShape: true,
-							},
-							{
-								yAccessor: ema50.accessor(),
-								yLabel: `${ema50.type()}(${ema50.options().windowSize})`,
-								valueFill: ema50.stroke(),
-								withShape: true,
-							},
-							{
-								yAccessor: ema50.accessor(),
-								yLabel: `Three White Soliders`,
-								valueFill: ema50.stroke(),
-								withShape: true,
-								width: 100,
-							},
-							{
-								yAccessor: ema50.accessor(),
-								yLabel: `Three White Soliders`,
-								valueFill: ema50.stroke(),
-								withShape: true,
-								width: 100,
-							}
-						]}
+						options={highlightOptions.filter(options => options).slice(0, 4).map(options => ({
+							yAccessor: noop,
+							yLabel: patternMap[options]?.titleEn,
+							valueFill: patternMap[options]?.stroke,
+							withShape: true,
+							width: 100,
+						}))
+						}
 					/>
 					<GroupTooltip
 						layout="vertical"
 						origin={[120, 15]}
-						verticalSize={25}
+						verticalSize={20}
 						onClick={e => console.log(e)}
-						options={[
-							{
-								yAccessor: ema20.accessor(),
-								yLabel: `${ema20.type()}(${ema20.options().windowSize})`,
-								valueFill: ema20.stroke(),
-								withShape: true,
-							},
-							{
-								yAccessor: ema50.accessor(),
-								yLabel: `${ema50.type()}(${ema50.options().windowSize})`,
-								valueFill: ema50.stroke(),
-								withShape: true,
-							},
-							{
-								yAccessor: ema50.accessor(),
-								yLabel: `Three White Soliders`,
-								valueFill: ema50.stroke(),
-								withShape: true,
-								width: 100,
-							},
-							{
-								yAccessor: ema50.accessor(),
-								yLabel: `Three White Soliders`,
-								valueFill: ema50.stroke(),
-								withShape: true,
-								width: 100,
-							}
-						]}
+						options={highlightOptions.filter(options => options).slice(4, 8).map(options => ({
+							yAccessor: noop,
+							yLabel: patternMap[options]?.titleEn,
+							valueFill: patternMap[options]?.stroke,
+							withShape: true,
+							width: 100,
+						}))
+						}
+					/>
+					<GroupTooltip
+						layout="vertical"
+						origin={[278, 15]}
+						verticalSize={20}
+						onClick={e => console.log(e)}
+						options={highlightOptions.filter(options => options).slice(8, 12).map(options => ({
+							yAccessor: noop,
+							yLabel: patternMap[options]?.titleEn,
+							valueFill: patternMap[options]?.stroke,
+							withShape: true,
+							width: 100,
+						}))
+						}
 					/>
 					{/* <Annotate
 						with={LabelAnnotation}
@@ -344,7 +355,7 @@ class CandleStickChartHighlightCandle extends React.Component {
 					<Annotate
 						with={LabelAnnotation}
 						when={(d) => this.isAnnoted(highlightPatterns, d)}
-						usingProps={annotationProps}
+						usingProps={this.annotationProps}
 					/>
 					<ZoomButtons
 						onReset={this.handleReset}

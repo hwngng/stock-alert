@@ -2,21 +2,13 @@ import React, { Component } from 'react';
 import { timeParse } from "d3-time-format";
 
 import CandleStickChartHighlightCandle from './CandleStickChartHighlightCandle';
-
-import hammerCandle from '../../candle-patterns/hammer';
-import invertedHammerCandle from '../../candle-patterns/invertedHammer';
-import morningStar from '../../candle-patterns/morningStar';
-import eveningStar from '../../candle-patterns/eveningStar';
-import bullishEngulfing from '../../candle-patterns/bullishEngulfing';
-import bearishEngulfing from '../../candle-patterns/bearishEngulfing';
-import threeWhiteSoldiers from '../../candle-patterns/threeWhiteSoldiers';
-import threeBlackCrows from '../../candle-patterns/threeBlackCrows';
 import DataService from '../../../common/request/DataService';
 import dataServiceApi from '../../../common/api/dataServiceApi';
-import { Modal, Form } from 'react-bootstrap';
+import { Modal, Form, Button } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
-import Helper from '../../../common/helper';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
+import patternMap from '../../../common/patternMap';
 
 export default class StockChart extends Component {
     constructor(props) {
@@ -30,63 +22,13 @@ export default class StockChart extends Component {
             type: 'hybrid',
             highlightPatterns: [],
             isShowModal: false,
-            highlightOptions: {},
+            highlightOptions: [''],
             selectValue: ''
         };
 
         this.parseDate = timeParse("%Y%m%d");
         this.dataSvcRequest = DataService(this.config['dataServiceHost']);
         this.exchanges = this.config['exchanges'];
-        this.patternMap = {
-            hammerCandle: {
-                titleEn: 'Hammer',
-                titleVi: '',
-                stroke: '',
-                fn: hammerCandle
-            },
-            invertedHammerCandle: {
-                titleEn: 'Inverted Hammer',
-                titleVi: '',
-                stroke: '',
-                fn: invertedHammerCandle
-            },
-            morningStar: {
-                titleEn: 'Morning Star',
-                titleVi: '',
-                stroke: '',
-                fn: morningStar
-            },
-            eveningStar: {
-                titleEn: 'Evening Star',
-                titleVi: '',
-                stroke: '',
-                fn: eveningStar
-            },
-            bullishEngulfing: {
-                titleEn: 'Bullish Engulfing',
-                titleVi: '',
-                stroke: '',
-                fn: bullishEngulfing
-            },
-            bearishEngulfing: {
-                titleEn: 'Bearish Engulfing',
-                titleVi: '',
-                stroke: '',
-                fn: bearishEngulfing
-            },
-            threeWhiteSoldiers: {
-                titleEn: 'Three White Soldiers',
-                titleVi: '',
-                stroke: '',
-                fn: threeWhiteSoldiers
-            },
-            threeBlackCrows: {
-                titleEn: 'Three Black Crows',
-                titleVi: '',
-                stroke: '',
-                fn: threeBlackCrows
-            }
-        }
     }
 
     loadChartCode() {
@@ -114,11 +56,10 @@ export default class StockChart extends Component {
         if (!stockInfo['symbol']) return;
         this.setState({ stockInfo, isShowModal });
 
-        this.dataSvcRequest(dataServiceApi.history.path, {
+        this.dataSvcRequest(dataServiceApi.historyWithCurr.path, {
             method: dataServiceApi.history.method,
             params: {
-                codes: [stockInfo['symbol']],
-                exchangeCodes: [stockInfo['exchange_code']]
+                code: stockInfo['symbol'],
             }
         })
             .then(response => {
@@ -142,91 +83,100 @@ export default class StockChart extends Component {
             })
     }
 
-    onHammerSelect(event) {
-        const { plotData } = this.state;
-        let { highlightPatterns } = this.state;
-        highlightPatterns = hammerCandle(plotData);
-        this.setState({ highlightPatterns })
-    }
-
-    onInvertedHammerSelect(event) {
-        const { plotData } = this.state;
-        let { highlightPatterns } = this.state;
-        highlightPatterns = invertedHammerCandle(plotData);
-        this.setState({ highlightPatterns })
-    }
-
-    onMorningStarSelect(event) {
-        const { plotData } = this.state;
-        let { highlightPatterns } = this.state;
-        highlightPatterns = morningStar(plotData);
-        this.setState({ highlightPatterns })
-    }
-
-    onEveningStarSelect(event) {
-        const { plotData } = this.state;
-        let { highlightPatterns } = this.state;
-        highlightPatterns = eveningStar(plotData);
-        this.setState({ highlightPatterns })
-    }
-
-    onBullishEngulfingSelect(event) {
-        const { plotData } = this.state;
-        let { highlightPatterns } = this.state;
-        highlightPatterns = bullishEngulfing(plotData);
-        this.setState({ highlightPatterns })
-    }
-
-    onBearishEngulfingSelect(event) {
-        const { plotData } = this.state;
-        let { highlightPatterns } = this.state;
-        highlightPatterns = bearishEngulfing(plotData);
-        this.setState({ highlightPatterns })
-    }
-
-    onThreeWhiteSolidersSelect(event) {
-        const { plotData } = this.state;
-        let { highlightPatterns } = this.state;
-        highlightPatterns = threeWhiteSoldiers(plotData);
-        this.setState({ highlightPatterns })
-    }
-
-    onThreeBlackCrowsSelect(event) {
-        const { plotData } = this.state;
-        let { highlightPatterns } = this.state;
-        highlightPatterns = threeBlackCrows(plotData);
-        this.setState({ highlightPatterns })
-    }
-
     handleCloseModalChild(event) {
         this.handleCloseModal();
     }
 
-    handleChangeSelect(event) {
-        this.setState({})
+    handleChangeSelect(event, optionIdx) {
+        const { highlightOptions, plotData } = this.state;
+        let { highlightPatterns } = this.state;
+        let patternKey = event.target.value;
+        if (optionIdx != null) {
+            highlightOptions[optionIdx] = patternKey;
+            highlightPatterns = [];
+            highlightOptions.forEach(patternKey => {
+                let pattern = patternMap[patternKey];
+                if (pattern) {
+                    let resultPatterns = pattern.fn(plotData);
+                    resultPatterns = resultPatterns.map(p => {
+                        p.push(patternKey);
+                        return p;
+                    })
+                    highlightPatterns = highlightPatterns.concat(resultPatterns);
+                }
+            });
+            highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+        } else {
+            highlightOptions.push(patternKey)
+            let pattern = patternMap[patternKey];
+            if (pattern) {
+                let resultPatterns = pattern.fn(plotData);
+                resultPatterns = resultPatterns.map(p => {
+                    p.push(patternKey);
+                    return p;
+                })
+                highlightPatterns = highlightPatterns.concat(resultPatterns);
+                highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+            }
+        }
+        // console.log(highlightPatterns);
+        this.setState({ highlightOptions, highlightPatterns });
     }
 
-    renderPatternSelect() {
+    handleAddPattern(event) {
+        const { highlightOptions } = this.state;
+        if (highlightOptions[highlightOptions.length - 1] != '')
+            highlightOptions.push('');
+        this.setState({ highlightOptions });
+    }
+
+    handleRemovePattern(event, optionIdx) {
+        if (optionIdx == null)
+            return;
+        const { plotData } = this.state;
+        let { highlightOptions, highlightPatterns } = this.state;
+        highlightOptions.splice(optionIdx, 1);
+        highlightPatterns = [];
+        highlightOptions.forEach(patternKey => {
+            let pattern = patternMap[patternKey];
+            if (pattern) {
+                let resultPatterns = pattern.fn(plotData);
+                resultPatterns = resultPatterns.map(p => {
+                    p.push(patternKey);
+                    return p;
+                })
+                highlightPatterns = highlightPatterns.concat(resultPatterns);
+            }
+        });
+        highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+
+        this.setState({ highlightOptions, highlightPatterns });
+    }
+
+    renderPatternSelect(optionIdx = null) {
         const that = this;
         const { highlightOptions } = this.state;
-        let options = Object.keys(this.patternMap)?.map(pattern => {
+        let options = Object.keys(patternMap)?.filter(x => !highlightOptions.includes(x) || (optionIdx != null && x == highlightOptions[optionIdx])).map(pattern => {
             return (
-                <option value={pattern}>{`Mẫu hình ${that.patternMap[pattern]['titleEn']}`}</option>
+                <option value={pattern}>{`Mẫu hình ${patternMap[pattern]['titleEn']}`}</option>
             );
         });
 
         return (
-            <Form.Control as="select" aria-label="Default select example" onChange={e => that.handleChangeSelect(e)}>
-                <option>Chọn mẫu hình nến</option>
-                {options}
-            </Form.Control>
+            <div className="select-pattern">
+                <Form.Control className="select" as="select" aria-label="Default select example" onChange={e => that.handleChangeSelect(e, optionIdx)} value={optionIdx != null ? highlightOptions[optionIdx] : ''}>
+                    <option>Chọn mẫu hình nến</option>
+                    {options}
+                </Form.Control>
+                <Button className="control-btn remove" onClick={e => that.handleRemovePattern(e, optionIdx)}><FontAwesomeIcon className="control-icon" icon={faXmark} /></Button>
+            </div>
         );
     }
 
     render() {
-        const { plotData, stockInfo, type, highlightPatterns, isShowModal } = this.state;
+        const { plotData, stockInfo, type, highlightPatterns, isShowModal, highlightOptions } = this.state;
         // const highlightAccumulated = Helper.accumulateAdjPoint(highlightPatterns, 24*60*60*1000000);
-        console.log(highlightPatterns);
+        // console.log(highlightPatterns);
         let content = <></>;
 
         if (!stockInfo || !stockInfo['symbol']) {
@@ -243,42 +193,14 @@ export default class StockChart extends Component {
                     <div className="container-xxl pattern-select">
                         <div className="row">
                             <div id="chart" className="stockchart col-10">
-                                <CandleStickChartHighlightCandle type={type} code={stockInfo['symbol']} exchangeTitle={this.exchanges[stockInfo['exchange_code']]} data={plotData} highlightPatterns={highlightPatterns} />
+                                <CandleStickChartHighlightCandle type={type} code={stockInfo['symbol']} exchangeTitle={this.exchanges[stockInfo['exchange_code']]} data={plotData} highlightPatterns={highlightPatterns} highlightOptions={highlightOptions}/>
                             </div>
                             <div className="highlight col-2">
-                                <div className="">
-                                    <input type="radio" onChange={this.onHammerSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Hammer</label>
+                                {highlightOptions.length > 0 &&
+                                    highlightOptions.map((select, idx) => this.renderPatternSelect(idx))}
+                                <div>
+                                    <Button className="add-new-pattern-btn" onClick={this.handleAddPattern.bind(this)}>Thêm mẫu hình</Button>
                                 </div>
-                                <div className="">
-                                    <input type="radio" onChange={this.onInvertedHammerSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Inverted Hammer</label>
-                                </div>
-                                <div className="">
-                                    <input type="radio" onChange={this.onMorningStarSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Morning Star</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onEveningStarSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Evening Star</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onBullishEngulfingSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Bullish Engulfing</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onBearishEngulfingSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Bearish Engulfing</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onThreeWhiteSolidersSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Three White Soliders</label>
-                                </div>
-                                <div className=" text-wrap">
-                                    <input type="radio" onChange={this.onThreeBlackCrowsSelect.bind(this)} name="pattern" />
-                                    <label>Mẫu hình Three Black Crows</label>
-                                </div>
-                                {this.renderPatternSelect()}
                             </div>
                         </div>
                     </div>

@@ -18,7 +18,7 @@ class LabelAnnotation extends Component {
 		}
 	}
 	render() {
-		const { className, textAnchor, fontFamily, fontSize, opacity, rotate } = this.props;
+		const { className, textAnchor, fontFamily, fontSize, opacity, rotate, stroke } = this.props;
 		const { xAccessor, xScale, yScale } = this.props;
 
 		const { xPos, yPos, fill, text, tooltip } = helper(this.props, xAccessor, xScale, yScale);
@@ -31,7 +31,8 @@ class LabelAnnotation extends Component {
 				opacity={opacity}
 				transform={`rotate(${rotate}, ${xPos}, ${yPos})`}
 				onClick={this.handleClick}
-				textAnchor={textAnchor}>{text}</text>
+				textAnchor={textAnchor}
+				stroke={stroke}>{text}</text>
 		</g>);
 	}
 }
@@ -61,6 +62,7 @@ LabelAnnotation.propTypes = {
 	]),
 	textAnchor: PropTypes.string,
 	fontFamily: PropTypes.string,
+	stroke: PropTypes.string,
 	fontSize: PropTypes.number,
 	opacity: PropTypes.number,
 	rotate: PropTypes.number,
@@ -87,6 +89,7 @@ export const defaultProps = {
 	opacity: 1,
 	rotate: 0,
 	x: ({ xScale, xAccessor, datum }) => xScale(xAccessor(datum)),
+	stroke: "#000"
 };
 
 LabelAnnotation.defaultProps = {
