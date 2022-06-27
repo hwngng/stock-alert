@@ -341,14 +341,14 @@ class CandleStickChartHighlightCandle extends React.Component {
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(0, 4).map(options => ({
-							yAccessor: () => this.patternCount[options],
+							yAccessor: () => this.patternCount[options] ?? '0',
 							yLabel: patternMap[options]?.titleEn,
 							valueFill: patternMap[options]?.stroke,
 							withShape: true,
 							width: 100,
 							tooltipKey: options,
 						}))}
-						displayFormat={n => Math.round(n)}
+						displayFormat={n => Math.round(n)?.toString() ?? '0'}
 					/>
 					<GroupTooltip
 						layout="vertical"
@@ -356,13 +356,13 @@ class CandleStickChartHighlightCandle extends React.Component {
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(4, 8).map(options => ({
-							yAccessor: () => this.patternCount[options],
+							yAccessor: () => this.patternCount[options] ?? '0',
 							yLabel: patternMap[options]?.titleEn,
 							valueFill: patternMap[options]?.stroke,
 							withShape: true,
 							width: 100,
 						}))}
-						displayFormat={n => Math.round(n)}
+						displayFormat={n => Math.round(n)?.toString() ?? '0'}
 					/>
 					<GroupTooltip
 						layout="vertical"
@@ -370,13 +370,13 @@ class CandleStickChartHighlightCandle extends React.Component {
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(8, 12).map(options => ({
-							yAccessor: () => this.patternCount[options],
+							yAccessor: () => this.patternCount[options] ?? '0',
 							yLabel: patternMap[options]?.titleEn,
 							valueFill: patternMap[options]?.stroke,
 							withShape: true,
 							width: 100,
 						}))}
-						displayFormat={n => Math.round(n)}
+						displayFormat={n => Math.round(n)?.toString() ?? '0'}
 					/>
 					{/* <Annotate
 						with={LabelAnnotation}
