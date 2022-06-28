@@ -11,6 +11,7 @@ import { threeInsideUp, threeInsideDown } from '../dashboard-basic/candle-patter
 import { bullishHarami, bearishHarami } from '../dashboard-basic/candle-patterns/harami';
 import { tweezerBottom, tweezerTop } from '../dashboard-basic/candle-patterns/tweezer';
 import { threeOutsideDown, threeOutsideUp } from '../dashboard-basic/candle-patterns/threeOutside';
+import { onNeck } from '../dashboard-basic/candle-patterns/onNeck';
 
 const patternMap = {
 	hammerCandle: {
@@ -112,20 +113,26 @@ const patternMap = {
 	tweezerBottom: {
 		titleEn: 'Tweezer Bottom',
 		titleVi: '',
-		stroke: '#adff2f',
+		stroke: '#a020f0',
 		fn: tweezerBottom
 	},
 	threeOutsideUp: {
 		titleEn: 'Three Outside Up',
 		titleVi: '',
-		stroke: '#adff2f',
+		stroke: '#0000ff',
 		fn: threeOutsideUp
 	},
 	threeOutsideDown: {
 		titleEn: 'Three Outside Down',
 		titleVi: '',
-		stroke: '#adff2f',
+		stroke: '#f4a460',
 		fn: threeOutsideDown
+	},
+	onNeck: {
+		titleEn: 'On Neck',
+		titleVi: '',
+		stroke: '#00bfff',
+		fn: onNeck
 	}
 }
 

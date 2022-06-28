@@ -1,8 +1,8 @@
 import common from "./common";
 
-export function piercing(dataSeries) {
+export function onNeck(dataSeries) {
 	const resultPatterns = [];
-	const isPiercingCandles = function(tradingDay1, tradingDay2) {
+	const isOnNeckCandles = function(tradingDay1, tradingDay2) {
 		if (common.getSign(tradingDay1) >= 0) return false;
 		if (common.getSign(tradingDay2) <= 0) return false;
 		let upper1 = common.getUpperBody(tradingDay1);
@@ -12,20 +12,18 @@ export function piercing(dataSeries) {
 		let body1 = upper1 - lower1;
 		let body2 = upper2 - lower2;
 		let minBody = common.getLargeBodyPercent()*0.6;
-		if (((lower1 > 0 && body1/lower1 >= minBody)
-				|| (lower2 > 0 && body2/lower2 >= minBody))
-			&& lower1 - lower2 >= 0.15*body2
-			&& upper2 > (upper1 + lower1)/2
-			&& upper2 < lower1 + 0.8*body1
-			&& body1 > 0
-			&& Math.abs(body1 - body2) / body1 < 0.3)
+		let smallBodyMin = common.getLargeBodyPercent()*0.1
+		let smallBodyMax = common.getLargeBodyPercent()*0.25
+		if ((lower1 > 0 && body1/lower1 >= minBody)
+			&& (lower2 > 0 && body2/lower2 >= smallBodyMin && body2/lower2 <= smallBodyMax)
+			&& (Math.abs(lower1 - upper2)/Math.min(lower1, upper2) < 0.002))
 			return true;
 		return false;
 	}
 
 	if (dataSeries.length >= 2) {
 		for (let i = 1; i < dataSeries.length; ++i) {
-			if (isPiercingCandles(dataSeries[i-1], dataSeries[i])) {
+			if (isOnNeckCandles(dataSeries[i-1], dataSeries[i])) {
 				resultPatterns.push([dataSeries[i-1], dataSeries[i]]);
 				i += 2;
 			}
