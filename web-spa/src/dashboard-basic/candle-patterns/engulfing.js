@@ -1,22 +1,27 @@
+import common from "./common";
+
 export function bullishEngulfing(dataSeries) {
 	const resultPatterns = [];
-	const isBullishEngulfingCandles = function(tradingDay1, tradingDay2) {
+	const isBullishEngulfingCandles = function (tradingDay1, tradingDay2) {
 		if (tradingDay1.close >= tradingDay1.open) return false;
 		if (tradingDay2.close <= tradingDay2.open) return false;
 		if (tradingDay1.open >= tradingDay2.close
 			|| tradingDay1.close <= tradingDay2.open)
 			return false;
+		let lower2 = common.getLowerBody(tradingDay2);
 		let body1 = Math.abs(tradingDay1.close - tradingDay1.open);
 		let body2 = Math.abs(tradingDay2.close - tradingDay2.open);
-		if (body2 / body1 > 1.3)
+		let minBody = common.getLargeBodyPercent() * 0.6;
+		if (body2 / body1 > 1.3
+			&& (lower2 > 0 && body2 / lower2 > minBody))
 			return true;
 		return false;
 	}
 
 	if (dataSeries.length >= 2) {
 		for (let i = 1; i < dataSeries.length; ++i) {
-			if (isBullishEngulfingCandles(dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-1], dataSeries[i]]);
+			if (isBullishEngulfingCandles(dataSeries[i - 1], dataSeries[i])) {
+				resultPatterns.push([dataSeries[i - 1], dataSeries[i]]);
 				i += 2;
 			}
 		}
@@ -26,23 +31,26 @@ export function bullishEngulfing(dataSeries) {
 
 export function bearishEngulfing(dataSeries) {
 	const resultPatterns = [];
-	const isBearishEngulfingCandles = function(tradingDay1, tradingDay2) {
+	const isBearishEngulfingCandles = function (tradingDay1, tradingDay2) {
 		if (tradingDay1.close <= tradingDay1.open) return false;
 		if (tradingDay2.close >= tradingDay2.open) return false;
 		if (tradingDay1.close >= tradingDay2.open
 			|| tradingDay1.open <= tradingDay2.close)
 			return false;
+		let lower2 = common.getLowerBody(tradingDay2);
 		let body1 = Math.abs(tradingDay1.close - tradingDay1.open);
 		let body2 = Math.abs(tradingDay2.close - tradingDay2.open);
-		if (body2 / body1 > 1.3)
+		let minBody = common.getLargeBodyPercent() * 0.6;
+		if (body2 / body1 > 1.3
+			&& (lower2 > 0 && body2 / lower2 > minBody))
 			return true;
 		return false;
 	}
 
 	if (dataSeries.length >= 2) {
 		for (let i = 1; i < dataSeries.length; ++i) {
-			if (isBearishEngulfingCandles(dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-1], dataSeries[i]]);
+			if (isBearishEngulfingCandles(dataSeries[i - 1], dataSeries[i])) {
+				resultPatterns.push([dataSeries[i - 1], dataSeries[i]]);
 				i += 2;
 			}
 		}

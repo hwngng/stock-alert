@@ -65,7 +65,7 @@ const candleAppearance = {
 const dateFormat = timeFormat("%Y-%m-%d");
 const numberFormat = format(".2f");
 
-class CandleStickChartHighlightCandle extends React.Component {
+class CandleStickChartHighlightCandle extends React.PureComponent {
 	constructor(props) {
 		super(props);
 
@@ -91,7 +91,8 @@ class CandleStickChartHighlightCandle extends React.Component {
 		};
 		this.focusCandle = null;
 		this.patternCount = {};
-		this.forceResset = false;
+		this.forceReset = false;
+		this.renderCount = 0;
 	}
 
 	zoomOnClickAnnotation(datum) {
@@ -121,7 +122,7 @@ class CandleStickChartHighlightCandle extends React.Component {
 		this.node.resetYDomain();
 	}
 	handleReset() {
-		this.forceResset = true;
+		this.forceReset = true;
 		this.setState({
 			suffix: this.state.suffix + 1
 		});
@@ -224,7 +225,7 @@ class CandleStickChartHighlightCandle extends React.Component {
 		let defaultEnd = xAccessor(data[Math.max(0, data.length - 125)]);
 		let start = defaultStart;
 		let end = defaultEnd;
-		if (!this.forceResset) {
+		if (!this.forceReset) {
 			if (focusPattern && focusPattern.length > 0) {
 				let newStart = xAccessor(data.find(x => x.date == focusPattern[0].date)) + 62;
 				let newEnd = newStart - 125;
@@ -256,9 +257,9 @@ class CandleStickChartHighlightCandle extends React.Component {
 				this.focusCandle = null;
 			}
 		}
-		this.forceResset = false;
+		this.forceReset = false;
 		let xExtents = [start, end];
-
+		console.log(++this.renderCount);
 		if (highlightPatterns && highlightPatterns.length > 0) {
 			this.patternCount = {};
 			highlightPatterns.forEach(pattern => {

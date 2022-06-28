@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import { timeParse } from "d3-time-format";
 
 import CandleStickChartHighlightCandle from './CandleStickChartHighlightCandle';
@@ -10,7 +10,7 @@ import { faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
 import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import patternMap from '../../../common/patternMap';
 
-export default class StockChart extends Component {
+export default class StockChart extends PureComponent {
     constructor(props) {
         super(props);
         this.config = props.config;

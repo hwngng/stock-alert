@@ -9,6 +9,8 @@ import { piercing } from '../dashboard-basic/candle-patterns/piercing';
 import { whiteMarubozu, blackMarubozu } from '../dashboard-basic/candle-patterns/marubozu';
 import { threeInsideUp, threeInsideDown } from '../dashboard-basic/candle-patterns/threeInside';
 import { bullishHarami, bearishHarami } from '../dashboard-basic/candle-patterns/harami';
+import { tweezerBottom, tweezerTop } from '../dashboard-basic/candle-patterns/tweezer';
+import { threeOutsideDown, threeOutsideUp } from '../dashboard-basic/candle-patterns/threeOutside';
 
 const patternMap = {
 	hammerCandle: {
@@ -100,6 +102,30 @@ const patternMap = {
 		titleVi: '',
 		stroke: '#ff6347',
 		fn: bearishHarami
+	},
+	tweezerTop: {
+		titleEn: 'Tweezer Top',
+		titleVi: '',
+		stroke: '#adff2f',
+		fn: tweezerTop
+	},
+	tweezerBottom: {
+		titleEn: 'Tweezer Bottom',
+		titleVi: '',
+		stroke: '#adff2f',
+		fn: tweezerBottom
+	},
+	threeOutsideUp: {
+		titleEn: 'Three Outside Up',
+		titleVi: '',
+		stroke: '#adff2f',
+		fn: threeOutsideUp
+	},
+	threeOutsideDown: {
+		titleEn: 'Three Outside Down',
+		titleVi: '',
+		stroke: '#adff2f',
+		fn: threeOutsideDown
 	}
 }
 
