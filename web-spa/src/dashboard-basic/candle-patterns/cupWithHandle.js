@@ -1,68 +1,122 @@
-import common from "./common";
+const getNearestCupWithHandle = function (dataSeries, traceFrom = -1) {
+	const fluc = 0.1;
+	const cupDepthRightMax = 0.4;
+	const cupDepthRightMin = 0.15;
+	const cupDepthLeftMax = 0.45;
+	const cupDepthLeftMin = 0.18;
+	const highDiff = 0.1;
+	const handleDepth = 0.15;
+	const maxPeakDip = 0.85;
 
-export function threeOutsideUp(dataSeries) {
-	const resultPatterns = [];
-	const isThreeOutsideUpCandles = function(tradingDay1, tradingDay2, tradingDay3) {
-		if (common.getSign(tradingDay1) >= 0) return false;
-		if (common.getSign(tradingDay2) <= 0) return false;
-		if (common.getSign(tradingDay3) < 0) return false;
-		let upper1 = common.getUpperBody(tradingDay1);
-		let lower1 = common.getLowerBody(tradingDay1);
-		let upper2 = common.getUpperBody(tradingDay2);
-		let lower2 = common.getLowerBody(tradingDay2);
-		let upper3 = common.getUpperBody(tradingDay3);
-		let body1 = upper1 - lower1;
-		let body2 = upper2 - lower2;
-		let minBody = common.getLargeBodyPercent()*0.6;
-		if ((lower2 > 0 && body2/lower2 >= minBody)
-			&& (upper1 < upper2 && lower1 > lower2)
-			&& (body2 - body1) > 0.2*body2
-			&& (upper3 > upper2))
-			return true;
-		return false;
+	let cwh = {};
+
+	let n = dataSeries.length;
+	let i = (traceFrom > 0 && traceFrom < dataSeries.length) ? traceFrom : dataSeries.length - 1;
+	let rh = i;
+	// trace right high point
+	while (i > 0
+		&& ((dataSeries[i - 1].close >= dataSeries[i].close)
+			|| (dataSeries[i - 1].close < dataSeries[i].close
+				&& dataSeries[i - 1].close >= (1 - fluc) * dataSeries[rh].close))
+	) {
+		if (dataSeries[i - 1].close >= dataSeries[rh].close)
+			rh = i - 1;
+		--i;
+	}
+	if (i <= 0 || rh == traceFrom)
+		return null;
+
+	cwh.rightHigh = dataSeries[rh];
+	cwh.rhIndex = rh;
+
+	// extend low handle
+	let j = rh;
+	let lowright = rh;
+	while (j < n - 1
+		&& ((dataSeries[j + 1].close <= dataSeries[j].close)
+			|| (dataSeries[j + 1].close > dataSeries[j].close
+				&& dataSeries[j + 1].close <= (1 + fluc) * dataSeries[lowright].close))
+	) {
+		if (dataSeries[j + 1].close <= dataSeries[lowright].close)
+			lowright = j + 1;
+		++j;
+	}
+	cwh.lowHandle = dataSeries[lowright];
+	cwh.lowHandleIndex = lowright;
+
+	// validate handle depth, deepest is 15% from right high
+	if (cwh.rightHigh.close - cwh.lowHandle.close > handleDepth * cwh.rightHigh.close
+		|| cwh.rightHigh.close - cwh.lowHandle.close <= 0)
+		return null;
+	// trace dip point
+	let dip = i;
+	while (i > 0
+		&& ((dataSeries[i - 1].close <= dataSeries[i].close)
+			|| (dataSeries[i - 1].close > dataSeries[i].close
+				&& dataSeries[i - 1].close <= (1 + fluc) * dataSeries[dip].close)
+			|| (dataSeries[i - 1].close < maxPeakDip * cwh.rightHigh.close))
+	) {
+		if (dataSeries[i - 1].close <= dataSeries[dip].close)
+			dip = i - 1;
+		--i;
+	}
+	if (i <= 0)
+		return null;
+
+	cwh.dip = dataSeries[dip];
+	cwh.dipIndex = dip;
+
+	// validate dip price
+	let dipChange = cwh.rightHigh.close - cwh.dip.close;
+	if (dipChange < cupDepthRightMin * cwh.rightHigh.close
+		|| dipChange > cupDepthRightMax * cwh.rightHigh.close)
+		return null;
+
+	let lh = i;
+	// trace left high point
+	while (i > 0
+		&& ((dataSeries[i - 1].close >= dataSeries[i].close)
+			|| (dataSeries[i - 1].close < dataSeries[i].close
+				&& dataSeries[i - 1].close >= (1 - fluc) * dataSeries[lh].close))
+	) {
+		if (dataSeries[i - 1].close >= dataSeries[lh].close)
+			lh = i - 1;
+		--i;
 	}
 
-	if (dataSeries.length >= 3) {
-		for (let i = 2; i < dataSeries.length; ++i) {
-			if (isThreeOutsideUpCandles(dataSeries[i-2], dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-2], dataSeries[i-1], dataSeries[i]]);
-				i += 3;
-			}
-		}
-	}
-	return resultPatterns;
+	cwh.leftHigh = dataSeries[lh];
+	cwh.lhIndex = lh;
+	
+	// validate dip price
+	dipChange = cwh.leftHigh.close - cwh.dip.close;
+	if (dipChange < cupDepthLeftMin * cwh.leftHigh.close
+		|| dipChange > cupDepthLeftMax * cwh.leftHigh.close)
+		return null;
+	// validate left right high duration
+	let cupWidth = rh - lh;
+	if (cupWidth < 5 * 5 || cupWidth > 26 * 5)
+		return null;
+	// validate left right high price
+	if (Math.abs(cwh.rightHigh.close - cwh.leftHigh.close) > highDiff * cwh.rightHigh.close)
+		return null;
+
+	return cwh;
 }
 
-export function threeOutsideDown(dataSeries) {
+export function cupWithHandle(dataSeries) {
 	const resultPatterns = [];
-	const isThreeOutsideDownCandles = function(tradingDay1, tradingDay2, tradingDay3) {
-		if (common.getSign(tradingDay1) <= 0) return false;
-		if (common.getSign(tradingDay2) >= 0) return false;
-		if (common.getSign(tradingDay3) > 0) return false;
-		let upper1 = common.getUpperBody(tradingDay1);
-		let lower1 = common.getLowerBody(tradingDay1);
-		let upper2 = common.getUpperBody(tradingDay2);
-		let lower2 = common.getLowerBody(tradingDay2);
-		let upper3 = common.getUpperBody(tradingDay3);
-		let body1 = upper1 - lower1;
-		let body2 = upper2 - lower2;
-		let minBody = common.getLargeBodyPercent()*0.6;
-		if ((lower2 > 0 && body2/lower2 >= minBody)
-			&& (upper1 < upper2 && lower1 > lower2)
-			&& (body2 - body1) > 0.2*body2
-			&& (upper3 < upper2))
-			return true;
-		return false;
+	const cwhs = [];
+	
+	for (let i = dataSeries.length - 1; i > 5 * 5; --i)		// 8 week
+	{
+		let cwh = getNearestCupWithHandle(dataSeries, i);
+		if (!cwh)
+			continue;
+		cwhs.push(cwh);
+		resultPatterns.unshift(dataSeries.slice(cwh.lhIndex, cwh.lowHandleIndex + 1));
+		i = cwh.dipIndex;
 	}
-
-	if (dataSeries.length >= 3) {
-		for (let i = 2; i < dataSeries.length; ++i) {
-			if (isThreeOutsideDownCandles(dataSeries[i-2], dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-2], dataSeries[i-1], dataSeries[i]]);
-				i += 3;
-			}
-		}
-	}
+	
 	return resultPatterns;
 }
 

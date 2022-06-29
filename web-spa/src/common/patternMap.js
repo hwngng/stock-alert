@@ -13,10 +13,11 @@ import { tweezerBottom, tweezerTop } from '../dashboard-basic/candle-patterns/tw
 import { threeOutsideDown, threeOutsideUp } from '../dashboard-basic/candle-patterns/threeOutside';
 import { onNeck } from '../dashboard-basic/candle-patterns/onNeck';
 import { bearishCounterAttack, bullishCounterAttack } from '../dashboard-basic/candle-patterns/counterattack';
+import { cupWithHandle } from '../dashboard-basic/candle-patterns/cupWithHandle';
 
 const patternMap = {
 	hammerCandle: {
-		titleEn: 'Hammer',
+		titleEn: 'Hammer / Hanging Man',
 		titleVi: '',
 		stroke: '#ffc0cb',
 		fn: hammerCandle
@@ -146,6 +147,12 @@ const patternMap = {
 		titleVi: '',
 		stroke: '#00fa9a',
 		fn: bearishCounterAttack
+	},
+	cupWithHandle: {
+		titleEn: 'Cup With Handle',
+		titleVi: '',
+		stroke: '#00ff00',
+		fn: cupWithHandle
 	}
 }
 

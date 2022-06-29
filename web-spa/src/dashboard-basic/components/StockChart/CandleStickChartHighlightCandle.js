@@ -227,8 +227,11 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 		let end = defaultEnd;
 		if (!this.forceReset) {
 			if (focusPattern && focusPattern.length > 0) {
-				let newStart = xAccessor(data.find(x => x.date == focusPattern[0].date)) + 62;
-				let newEnd = newStart - 125;
+				let med = Helper.getMedium(focusPattern, 0, focusPattern.length - 2);
+				let range = (focusPattern.length-1) < 125 ? 125 : focusPattern.length + 20;
+				
+				let newStart = xAccessor(data.find(x => x.date == med.date)) + range/2;
+				let newEnd = newStart - range;
 				if (newStart <= defaultStart) {
 					start = newStart;
 					end = newEnd >= 0 ? newEnd : 0;
