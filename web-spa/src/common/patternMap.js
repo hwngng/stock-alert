@@ -15,6 +15,8 @@ import { onNeck } from '../dashboard-basic/candle-patterns/onNeck';
 import { bearishCounterAttack, bullishCounterAttack } from '../dashboard-basic/candle-patterns/counterattack';
 import { cupWithHandle } from '../dashboard-basic/candle-patterns/cupWithHandle';
 import { darkCloudCover } from '../dashboard-basic/candle-patterns/darkCloudCover';
+import { doji, dragonflyDoji, gravestoneDoji, longLeggedDoji } from '../dashboard-basic/candle-patterns/doji';
+import { spinningTop } from '../dashboard-basic/candle-patterns/spinningTop';
 
 const patternMap = {
 	hammerCandle: {
@@ -158,8 +160,38 @@ const patternMap = {
 	darkCloudCover: {
 		titleEn: 'Dark Cloud Cover',
 		titleVi: '',
-		stroke: '#00ff00',
+		stroke: '#0000cd',
 		fn: darkCloudCover
+	},
+	doji: {
+		titleEn: 'Doji',
+		titleVi: '',
+		stroke: '#c71585',
+		fn: doji
+	},
+	longLeggedDoji: {
+		titleEn: 'Long Legged Doji',
+		titleVi: '',
+		stroke: '#6a5acd',
+		fn: longLeggedDoji
+	},
+	dragonflyDoji: {
+		titleEn: 'Dragonfly Doji',
+		titleVi: '',
+		stroke: '#ffd700',
+		fn: dragonflyDoji
+	},
+	gravestoneDoji: {
+		titleEn: 'Gravestone Doji',
+		titleVi: '',
+		stroke: '#ff8c00',
+		fn: gravestoneDoji
+	},
+	spinningTop: {
+		titleEn: 'Spinning Top',
+		titleVi: '',
+		stroke: '#00ced1',
+		fn: spinningTop
 	}
 }
 

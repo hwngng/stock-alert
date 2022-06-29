@@ -1,3 +1,5 @@
+import common from "./common";
+
 export default function hammerCandle(dataSeries) {
 	const resultPatterns = [];
 	const isHammerCandle = function(tradingDay) {
@@ -12,11 +14,15 @@ export default function hammerCandle(dataSeries) {
 		let lowerWick = lower - tradingDay.low;
 		let body = upper - lower;
 		let height = tradingDay.high - tradingDay.low;
+		let minBody = common.getLargeBodyPercent() * 0.05;
+		let minWick = common.getLargeBodyPercent() * 0.5;
 		if (height == 0)
 			return false;
-		if (body/height > 0.15 &&
+		if ((lower > 0 && body / lower >= minBody) &&
+			body/height > 0.15 &&
 			upperWick/height < 0.05 &&
-			lowerWick >= 2*body)
+			lowerWick >= 2*body &&
+			(tradingDay.low > 0 && height / tradingDay.low >= minWick))
 			return true;
 
 		return false;
