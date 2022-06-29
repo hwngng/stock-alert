@@ -14,6 +14,7 @@ import { threeOutsideDown, threeOutsideUp } from '../dashboard-basic/candle-patt
 import { onNeck } from '../dashboard-basic/candle-patterns/onNeck';
 import { bearishCounterAttack, bullishCounterAttack } from '../dashboard-basic/candle-patterns/counterattack';
 import { cupWithHandle } from '../dashboard-basic/candle-patterns/cupWithHandle';
+import { darkCloudCover } from '../dashboard-basic/candle-patterns/darkCloudCover';
 
 const patternMap = {
 	hammerCandle: {
@@ -23,7 +24,7 @@ const patternMap = {
 		fn: hammerCandle
 	},
 	invertedHammerCandle: {
-		titleEn: 'Inverted Hammer',
+		titleEn: 'Inverted Hammer / Shooting Star',
 		titleVi: '',
 		stroke: '#ff69b4',
 		fn: invertedHammerCandle
@@ -153,6 +154,12 @@ const patternMap = {
 		titleVi: '',
 		stroke: '#00ff00',
 		fn: cupWithHandle
+	},
+	darkCloudCover: {
+		titleEn: 'Dark Cloud Cover',
+		titleVi: '',
+		stroke: '#00ff00',
+		fn: darkCloudCover
 	}
 }
 
