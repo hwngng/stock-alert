@@ -17,6 +17,7 @@ import { cupWithHandle } from '../dashboard-basic/candle-patterns/cupWithHandle'
 import { darkCloudCover } from '../dashboard-basic/candle-patterns/darkCloudCover';
 import { doji, dragonflyDoji, gravestoneDoji, longLeggedDoji } from '../dashboard-basic/candle-patterns/doji';
 import { spinningTop } from '../dashboard-basic/candle-patterns/spinningTop';
+import { fallingThreeMethods, risingThreeMethods } from '../dashboard-basic/candle-patterns/threeMethods';
 
 const patternMap = {
 	hammerCandle: {
@@ -192,6 +193,18 @@ const patternMap = {
 		titleVi: '',
 		stroke: '#00ced1',
 		fn: spinningTop
+	},
+	fallingThreeMethods: {
+		titleEn: 'Falling Three Methods',
+		titleVi: '',
+		stroke: '#ff4500',
+		fn: fallingThreeMethods
+	},
+	risingThreeMethods: {
+		titleEn: 'Rising Three Methods',
+		titleVi: '',
+		stroke: '#9932cc',
+		fn: risingThreeMethods
 	}
 }
 
