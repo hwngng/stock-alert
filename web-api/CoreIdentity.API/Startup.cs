@@ -68,6 +68,8 @@ namespace CoreIdentity.API
             services.AddDbContextPool<DataContext>(options => options.UseNpgsql(Configuration["ConnectionStrings:DefaultConnection"], a => a.MigrationsAssembly("CoreIdentity")));
             services.AddScoped<IExampleRepo, ExampleRepo>();
             services.AddScoped<IWatchlistRepo, WatchlistRepo>();
+            services.AddScoped<IAlertTypeRepo, AlertTypeRepo>();
+            services.AddScoped<IAlertOptionRepo, AlertOptionRepo>();
 
             services.AddControllers();
             // ref: https://stackoverflow.com/questions/62300816/remove-nulls-from-iactionresult-responses
