@@ -11,6 +11,7 @@ namespace CoreIdentity.Data.ViewModels
 		public List<object> Parameters { get; set; }
 		public string Exchange { get; set; }
 		public List<string> Symbols { get; set; }
+		public long? WatchlistId { get; set; }
 		public long? Average5Volumne { get; set; }
 	}
 }

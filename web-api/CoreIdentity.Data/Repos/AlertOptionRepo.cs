@@ -29,6 +29,7 @@ namespace CoreIdentity.Data.Repos
 											ParametersJson = x.ParametersJson,
 											Exchange = x.Exchange,
 											SymbolListJson = x.SymbolListJson,
+											WatchlistId = x.WatchlistId,
 											Average5Volumne = x.Average5Volumne
 										})
 										.OrderBy(x => x.Id);
@@ -46,6 +47,7 @@ namespace CoreIdentity.Data.Repos
 											ParametersJson = x.ParametersJson,
 											Exchange = x.Exchange,
 											SymbolListJson = x.SymbolListJson,
+											WatchlistId = x.WatchlistId,
 											Average5Volumne = x.Average5Volumne
 										});
 			return await query.FirstOrDefaultAsync();
@@ -60,6 +62,7 @@ namespace CoreIdentity.Data.Repos
 				ParametersJson = alertOptionViewModel.Parameters is null ? null : JsonSerializer.Serialize(alertOptionViewModel.Parameters),
 				Exchange = alertOptionViewModel.Exchange,
 				SymbolListJson = alertOptionViewModel.Symbols is null ? null : JsonSerializer.Serialize(alertOptionViewModel.Symbols),
+				WatchlistId = alertOptionViewModel.WatchlistId,
 				Average5Volumne = alertOptionViewModel.Average5Volumne
 			};
 			var alertOptionCreated = _ctx.AlertOptions.Add(alertOption);
@@ -94,6 +97,12 @@ namespace CoreIdentity.Data.Repos
 			if (alertOptionViewModel.Average5Volumne.HasValue)
 			{
 				setStm += $"{comma}\"Average5Volumne\" = {{{argCount++}}}";
+				args.Add(alertOptionViewModel.Average5Volumne);
+				comma = ",";
+			}
+			if (alertOptionViewModel.WatchlistId.HasValue)
+			{
+				setStm += $"{comma}\"WatchlistId\" = {{{argCount++}}}";
 				args.Add(alertOptionViewModel.Average5Volumne);
 				comma = ",";
 			}

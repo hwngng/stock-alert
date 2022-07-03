@@ -13,6 +13,7 @@ namespace CoreIdentity.Data.Models
 		public string ParametersJson { get; set; }
 		public string Exchange { get; set; }
 		public string SymbolListJson { get; set; }
+		public long? WatchlistId { get; set; }
 		public long? Average5Volumne { get; set; }
 	}
 }
