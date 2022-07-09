@@ -30,7 +30,7 @@ namespace CoreIdentity.Data.Repos
 											Exchange = x.Exchange,
 											SymbolListJson = x.SymbolListJson,
 											WatchlistId = x.WatchlistId,
-											Average5Volumne = x.Average5Volumne
+											Average5Volume = x.Average5Volume
 										})
 										.OrderBy(x => x.Id);
 			return await query.ToListAsync();
@@ -48,7 +48,7 @@ namespace CoreIdentity.Data.Repos
 											Exchange = x.Exchange,
 											SymbolListJson = x.SymbolListJson,
 											WatchlistId = x.WatchlistId,
-											Average5Volumne = x.Average5Volumne
+											Average5Volume = x.Average5Volume
 										});
 			return await query.FirstOrDefaultAsync();
 		}
@@ -63,7 +63,7 @@ namespace CoreIdentity.Data.Repos
 				Exchange = alertOptionViewModel.Exchange,
 				SymbolListJson = alertOptionViewModel.Symbols is null ? null : JsonSerializer.Serialize(alertOptionViewModel.Symbols),
 				WatchlistId = alertOptionViewModel.WatchlistId,
-				Average5Volumne = alertOptionViewModel.Average5Volumne
+				Average5Volume = alertOptionViewModel.Average5Volumne
 			};
 			var alertOptionCreated = _ctx.AlertOptions.Add(alertOption);
 			var status = await _ctx.SaveChangesAsync();

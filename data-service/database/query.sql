@@ -38,3 +38,12 @@ ORDER BY stock_id, dt;
 select * from stock_tickers where symbol = ANY (array['MWG','TCB','NVL']);
 
 select * from exchanges;
+
+
+insert into stock_prices ("stock_id", "dt", "open", "high", "low", "close", "volume")
+values
+(1825, '2022-06-01', 24.3, 24.35, 22.7, 22.83, 10000000),
+(1825, '2022-06-02', 22.83, 23.24, 22.75, 23.24, 10000000),
+(1825, '2022-06-03', 23.45, 23.9, 23.4, 23.85, 1000000),
+(1825, '2022-06-06', 23.5, 24.2, 23.45, 24.1, 10000000),
+(1825, '2022-06-07', 24.5, 24.6, 22, 22.5, 10000000);

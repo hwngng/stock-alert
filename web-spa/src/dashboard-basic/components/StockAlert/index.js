@@ -1,5 +1,5 @@
 import axios from 'axios';
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import { HubConnectionBuilder, } from '@microsoft/signalr';
 import { NotificationContainer, NotificationManager } from 'react-notifications';
 import 'react-notifications/lib/notifications.css';
@@ -8,7 +8,7 @@ import { faGear } from '@fortawesome/free-solid-svg-icons'
 import AlertSettings from '../AlertSettings';
 import alertServiceApi from '../../../common/api/alertServiceApi';
 
-export default class StockAlert extends Component {
+export default class StockAlert extends PureComponent {
 
     constructor(props) {
         super(props);

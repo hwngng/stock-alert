@@ -1,5 +1,12 @@
 import React, { Component } from 'react';
-import { Modal } from 'react-bootstrap';
+import { Button, Modal } from 'react-bootstrap';
+import userApi from '../../../common/api/userApi';
+import WebAPIAuth from '../../../common/request/WebAPIAuth';
+import { faPen, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Dropdown from 'react-multilevel-dropdown';
+import { Form } from 'react-bootstrap';
+import Helper from '../../../common/helper';
 
 export default class AlertSettings extends Component {
 
@@ -7,91 +14,31 @@ export default class AlertSettings extends Component {
         super(props);
 
         this.handleCloseModal = this.props.handleCloseModal;
+        this.config = props.config;
+        this.editOption = props.option ?? {};
 
         this.state = {
-            isShowModal: false
+            isShowModal: false,
+            alertOptions: null,
+            alertTypes: null,
+            watchlists: null,
+            createAlertModal: false,
+            selectedAlertType: null,
+            selectedSearchRangeIdx: 0,
+            selectedVolumeRange: null
         };
 
-        this.alertOptionChoices = {
-            "highestInRange": {
-                desc: "Cao nhất trong thời gian"
-            },
-            "lowestInRange": {
-                desc: "Thấp nhất trong thời gian"
-            },
-            "priceTrendPattern": {
-                desc: "Xu hướng giá"
-            },
-            "TASignals": {
-                desc: "Dựa trên tín hiệu kỹ thuật"
-            }
-        };
-
-        this.PriceTrend = {
-            '1': {
-                value: 1,
-                desc: "Tăng"
-            },
-            '-1': {
-                value: -1,
-                desc: "Giảm"
-            },
-            '0': {
-                value: 0,
-                desc: "Không đổi"
-            },
-            '-2': {
-                value: -2,
-                desc: "Bỏ qua"
-            }
-        }
-
-        this.TASignalCondition = {
-            "0": {
-                value: 0,
-                desc: "giá hiện tại cắt lên"
-            },
-            "1": {
-                value: 1,
-                desc: "giá hiện tại cắt xuống"
-            }
-        }
-
-        this.TechnicalIndicator = {
-            sma: {
-                value: "sma",
-                desc: "đường SMA"
-            }
-        }
-
-        this.AvailStockCodes = ["FLC", "HAG", "HSG", "MBB", "PDR", "PVD", "SHB", "VIC", "VND", "ASP", "FTS", "GVR", "HAG", "HCM", "HDC", "SSI", "TCB", "TGG", "VOS", "VTO"];
-
-        this.state = {
-            alertOptions: {
-                // "highestInRange": {
-                //     "fromDate": "2020-06-22",
-                //     "toDate": "2021-06-22"
-                // },
-                // "lowestInRange": {
-                //     "fromDate": "2020-06-22",
-                //     "toDate": "2021-06-22"
-                // },
-                // "priceTrendPattern": [1, -1, 1, -2],
-                // "TASignals": {
-                //     "sma": 1
-                // },
-                "stockCodes": [...this.AvailStockCodes]
-            }
-        };
-
-        let localAlertOptions = localStorage.getItem("alertOptions");
-        if (localAlertOptions) {
-            try {
-                this.state.alertOptions = JSON.parse(localAlertOptions);
-            } catch (e) {
-
-            }
-        }
+        this.exchanges = this.config['exchanges'];
+        this.apiAuthRequest = WebAPIAuth(this.config['webApiHost']);
+        this.searchRangeOptions = [
+            { 'title': 'Chứng khoán sàn HOSE', 'exchange': '10' },
+            { 'title': 'Chứng khoán sàn HNX', 'exchange': '02' },
+            { 'title': 'Chứng khoán sàn UPCOM', 'exchange': '03' },
+            { 'title': 'Tất cả chứng khoán', 'exchange': '10,02,03' },
+        ];
+        this.avgVolume = [10000, 50000, 100000, 200000, 500000, 1000000];
+        this.volumeOptions = this.avgVolume.map(v => ({ title: 'KLTB 5 phiên tối thiểu ' + v, vol: v }));
+        this.defaultAlertType = '';
     }
 
     formatDate(date) {
@@ -119,316 +66,433 @@ export default class AlertSettings extends Component {
         isShowModal = this.props.isShowModal;
 
         this.setState({ isShowModal });
+
+        this.loadAlertType();
+        this.loadAlertOption();
+        this.loadWatchlist();
     }
 
-    handleChangeOption(event, alertOptionKeyOld) {
-        let alertOptions = this.state.alertOptions;
-        let alertOptionKeyNew = event.target.value;
-        if (alertOptionKeyNew in alertOptions) {
-            alert("Đã tồn tại điều kiện này!");
-            return;
-        }
-        if (alertOptionKeyOld != alertOptionKeyNew) {
-            Object.defineProperty(alertOptions, alertOptionKeyNew, Object.getOwnPropertyDescriptor(alertOptions, alertOptionKeyOld));
-            delete alertOptions[alertOptionKeyOld];
-            switch (alertOptionKeyNew) {
-                case "highestInRange":
-                case "lowestInRange":
-                    alertOptions[alertOptionKeyNew] = { "toDate": this.formatDate(new Date()) };
-                    break;
-                case "TASignals":
-                    alertOptions[alertOptionKeyNew] = { sma: 0 };
-                    break;
-                case "priceTrendPattern":
-                    alertOptions[alertOptionKeyNew] = [];
-                    break;
-                default:
-                    alertOptions[alertOptionKeyNew] = {};
-                    break;
+    loadAlertType() {
+        const that = this;
 
+        this.apiAuthRequest(userApi.alertTypes.path, {
+            method: userApi.alertTypes.method
+        })
+            .then(response => {
+                let alertTypeObj = response.data;
+                if (!alertTypeObj) return;
+                that.buildTree(alertTypeObj, 'typeKey', 'parent');
+                console.log(alertTypeObj);
+                let highestNode = alertTypeObj.find(x => !x['parentNode']);
+                if (!this.defaultAlertType) {
+                    let leftMostNode = {};
+                    if (highestNode) {
+                        leftMostNode = that.leftLeastLeaf(highestNode);
+                    }
+                    this.defaultAlertType = leftMostNode['typeKey'];
+                }
+                that.setState({ alertTypes: alertTypeObj });
+            })
+            .catch(error => {
+                console.log(error);
+            });
+    }
+
+    loadAlertOption() {
+        const that = this;
+
+        this.apiAuthRequest(userApi.alertOptions.path, {
+            method: userApi.alertOptions.method
+        })
+            .then(response => {
+                let alertOptionObj = response.data;
+                if (!alertOptionObj) return;
+                that.setState({ alertOptions: alertOptionObj });
+            })
+            .catch(error => {
+                console.log(error);
+            });
+    }
+
+    loadWatchlist() {
+        const that = this;
+
+        this.apiAuthRequest(userApi.watchlists.path, {
+            method: userApi.watchlists.method
+        })
+            .then(response => {
+                let watchlistObj = response.data;
+                if (!watchlistObj) return;
+                this.searchRangeOptions = this.searchRangeOptions.concat(watchlistObj.map(w => ({
+                    title: `Chứng khoán từ watchlist "${w['name']}"`,
+                    watchlistId: w['id']
+                })));
+                console.log(this.searchRangeOptions);
+                that.setState({ watchlists: watchlistObj });
+            })
+            .catch(error => {
+                console.log(error);
+            });
+    }
+
+    getAlertRangeTitle(option) {
+        let rangeTitle = '';
+        let exchange = option['exchange'];
+        let watchlistId = option['watchlistId'];
+        let average5Volume = option['average5Volume'];
+        if (exchange) {
+            let exchangeLst = exchange.split(',');
+            let exchangeSymbol = '';
+            if (exchangeLst.length == 1) {
+                exchangeSymbol = this.exchanges[exchangeLst[0]];
+                if (exchangeSymbol) {
+                    rangeTitle = 'Chứng khoán sàn ' + exchangeSymbol;
+                }
+            } else if (exchangeLst.length == 3) {
+                if (this.exchanges[exchangeLst[0]]
+                    && this.exchanges[exchangeLst[1]]
+                    && this.exchanges[exchangeLst[2]]) {
+                    rangeTitle = 'Tất cả chứng khoán';
+                }
             }
 
-        }
-        this.setState({ alertOptions });
-    }
-
-    handleChangeTrend(event, idx) {
-        let alertOptions = this.state.alertOptions;
-        alertOptions["priceTrendPattern"][idx] = event.target.value;
-        this.setState({ alertOptions });
-    }
-
-    handleChangePriceTrendDay(event) {
-        let alertOptions = this.state.alertOptions;
-        if (parseInt(event.target.value) > 0) {
-            alertOptions["priceTrendPattern"] = Array(parseInt(event.target.value)).fill(-2);
         } else {
-        }
-        this.setState({ alertOptions });
-    }
-
-    handleChangeRangeHighestToDate(event) {
-        let alertOptions = this.state.alertOptions;
-        alertOptions["highestInRange"]["toDate"] = event.target.value;
-        this.setState({ alertOptions });
-    }
-
-    handleChangeRangeHighestFromDate(event) {
-        let alertOptions = this.state.alertOptions;
-        alertOptions["highestInRange"]["fromDate"] = event.target.value;
-        this.setState({ alertOptions });
-    }
-
-    handleChangeRangeLowestToDate(event) {
-        let alertOptions = this.state.alertOptions;
-        alertOptions["lowestInRange"]["toDate"] = event.target.value;
-        this.setState({ alertOptions });
-    }
-
-    handleChangeRangeLowestFromDate(event) {
-        let alertOptions = this.state.alertOptions;
-        alertOptions["lowestInRange"]["fromDate"] = event.target.value;
-        this.setState({ alertOptions });
-    }
-
-    handleChangeTA(event, taKeyOld) {
-        let alertOptions = this.state.alertOptions;
-        let taKeyNew = event.target.value;
-        if (taKeyOld != taKeyNew) {
-            Object.defineProperty(alertOptions, taKeyNew, Object.getOwnPropertyDescriptor(alertOptions, taKeyOld));
-            delete alertOptions[taKeyOld];
-            switch (taKeyNew) {
-                case "sma":
-                    alertOptions[taKeyNew] = 10;
-                default:
-                    alertOptions[taKeyNew] = {};
-                    break;
-
+            const { watchlists } = this.state;
+            let watchlist = null;
+            if (watchlistId) {
+                watchlist = watchlists.find(w => w.id == watchlistId);
+                if (watchlist) {
+                    rangeTitle = `Chứng khoán trong watchlist "${watchlist['name']}"`;
+                }
             }
-
         }
-        this.setState({ alertOptions });
-    }
-
-    handleChangeTACondition(event, taKey, taConditionOld) {
-        let alertOptions = this.state.alertOptions;
-        let taConditionNew = event.target.value;
-        if (taConditionOld != taConditionNew) {
-            switch (taKey) {
-                case "sma":
-                    alertOptions["TASignals"][taKey] = taConditionNew;
-                default:
-                    alertOptions["TASignals"][taKey] = taConditionNew;
-                    break;
-
+        if (average5Volume) {
+            if (rangeTitle) {
+                rangeTitle += '; KLTB 5 phiên tối thiểu ' + average5Volume;
             }
-
+        } else {
+            if (rangeTitle) {
+                rangeTitle += '; Không hạn chế thanh khoản';
+            }
         }
-        this.setState({ alertOptions });
+        return rangeTitle;
     }
 
-    renderTAParameters(taKey) {
-        switch (taKey) {
-            case "sma":
-                return (
-                    <>
-                        <label> 10 ngày</label>
-                    </>
-                );
-                break;
-            default:
-                break;
-        }
+    getAlertTypeTitle(option) {
+        const { alertTypes } = this.state;
+        let typeKey = option['typeKey'];
+        let alertType = alertTypes.find(a => a.typeKey == typeKey);
+        return alertType ? alertType['title'] : null;
     }
 
-    renderAlertOptionInput(alertOptionKey, alertOptionValue) {
-        console.log(alertOptionValue);
-        switch (alertOptionKey) {
-            case 'highestInRange':
-                return (
-                    <>
-                        <select value={alertOptionKey} onChange={(e) => this.handleChangeOption(e, alertOptionKey)}>
-                            {Object.keys(this.alertOptionChoices).map(choiceKey => {
-                                return (<option value={choiceKey} key={choiceKey}>{this.alertOptionChoices[choiceKey].desc}</option>)
-                            })}
-                        </select>
-                        <label> tính ngược từ ngày </label>
-                        <input type="date" value={alertOptionValue.toDate ? alertOptionValue.toDate : this.formatDate(new Date())} onChange={this.handleChangeRangeHighestToDate.bind(this)} />
-                        <label> trở về </label>
-                        <input type="text" pattern="[0-9]*" value={alertOptionValue.fromDate ?? "0"} onChange={this.handleChangeRangeHighestFromDate.bind(this)} />
-                        <label> ngày trước</label>
-                    </>
-                );
-            case 'lowestInRange':
-                return (
-                    <>
-                        <select value={alertOptionKey} onChange={this.handleChangeOption.bind(this)}>
-                            {Object.keys(this.alertOptionChoices).map(choiceKey => {
-                                return (<option value={choiceKey} key={choiceKey}>{this.alertOptionChoices[choiceKey].desc}</option>)
-                            })}
-                        </select>
-                        <label> tính ngược từ ngày </label>
-                        <input type="date" value={alertOptionValue.toDate ?? this.formatDate(new Date())} onChange={this.handleChangeRangeLowestToDate.bind(this)} />
-                        <label> trở về </label>
-                        <input type="text" pattern="[0-9]*" value={alertOptionValue.fromDate ?? "0"} onChange={this.handleChangeRangeLowestFromDate.bind(this)} />
-                        <label> ngày trước</label>
-                    </>
-                );
-            case 'priceTrendPattern':
-                return (
-                    <>
-                        <select value={alertOptionKey} onChange={(e) => this.handleChangeOption(e, alertOptionKey)}>
-                            {Object.keys(this.alertOptionChoices).map(choiceKey => {
-                                return (<option value={choiceKey} key={choiceKey}>{this.alertOptionChoices[choiceKey].desc}</option>)
-                            })}
-                        </select>
-                        <label> trong </label>
-                        <input type="number" min="1" max="10" step="1" value={alertOptionValue.length} onChange={this.handleChangePriceTrendDay.bind(this)}></input>
-                        <label> ngày gần nhất (cho tới hôm nay): </label>
-                        {alertOptionValue.map((trend, idx) => {
-                            return (
-                                <select value={trend} onChange={(e) => this.handleChangeTrend(e, idx)}>
-                                    {Object.keys(this.PriceTrend).map((trendKey, idx) => {
-                                        return (<option value={trendKey} key={idx}>{this.PriceTrend[trendKey].desc}</option>)
-                                    })}
-                                </select>
-                            );
-                        })}
-                    </>
-                );
-            case "TASignals":
-                return (
-                    <>
-                        {Object.keys(alertOptionValue).map(taKey => {
-                            return (
-                                <>
-                                    <select value={alertOptionKey} onChange={(e) => this.handleChangeOption(e, alertOptionKey)}>
-                                        {Object.keys(this.alertOptionChoices).map(choiceKey => {
-                                            return (<option value={choiceKey} key={choiceKey}>{this.alertOptionChoices[choiceKey].desc}</option>)
-                                        })}
-                                    </select>
-                                    <select value={taKey} onChange={(e) => this.handleChangeTA(e, taKey)}>
-                                        {Object.keys(this.TechnicalIndicator).map(ta => {
-                                            return (<option value={ta} key={ta}>{this.TechnicalIndicator[ta].desc}</option>)
-                                        })}
-                                    </select>
-                                    <>{this.renderTAParameters(taKey)}</>
-                                    <select value={alertOptionValue[taKey]} onChange={(e) => this.handleChangeTACondition(e, taKey, alertOptionValue[taKey])}>
-                                        {Object.keys(this.TASignalCondition).map(taCond => {
-                                            return (<option value={taCond} key={taCond}>{this.TASignalCondition[taCond].desc}</option>)
-                                        })}
-                                    </select>
-                                </>
-                            );
-                        })}
-                    </>
-                );
-            default:
-                return (
-                    <>
-                        <select onChange={(e) => this.handleChangeOption(e, alertOptionKey)} value={alertOptionKey}>
-                            <option value="-1" key="-1">Lựa chọn điều kiện</option>
-                            {Object.keys(this.alertOptionChoices).map(choiceKey => {
-                                return (<option value={choiceKey} key={choiceKey}>{this.alertOptionChoices[choiceKey].desc}</option>)
-                            })}
-                        </select>
-                    </>
-                );
+    handleOpenCreateModal(e) {
+        let { selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange } = this.state;
+        selectedAlertType = this.defaultAlertType;
+        selectedSearchRangeIdx = 0;
+        selectedVolumeRange = ''
+        this.setState({ createAlertModal: true, selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange });
+    }
+
+    handleCloseCreateModal(e) {
+        const that = this;
+        this.setState({ createAlertModal: false });
+        setTimeout(() => {
+            that.setState({
+                selectedAlertType: '',
+                selectedSearchRangeIdx: 0,
+                selectedVolumeRange: ''
+            });
+        }, 500);
+    }
+
+    handleChangeAlertType(event, node) {
+        if (node['children'])
+            return;
+        console.log(event);
+        this.setState({ selectedAlertType: node['typeKey'] });
+    }
+
+    renderChildren(children) {
+        const that = this;
+        return children.map(child => {
+            return (
+                <Dropdown.Item
+                    className="alert-type-select-menu"
+                    onClick={e => that.handleChangeAlertType(e, child)}
+                >
+                    <span>{child['title']}</span>
+                    {child['children'] &&
+                        (
+                            <Dropdown.Submenu position="right" className="alert-type-select-menu">
+                                {this.renderChildren(child['children'])}
+                            </Dropdown.Submenu>
+                        )}
+                </Dropdown.Item>
+            );
+        })
+    }
+
+    leftLeastLeaf(node) {
+        if (node['children'])
+            return this.leftLeastLeaf(node['children'][0]);
+        return node;
+    }
+
+    renderAlertTypeSelect(alertTypes) {
+        const { selectedAlertType } = this.state;
+        this.buildTree(alertTypes, 'typeKey', 'parent');
+        console.log(alertTypes);
+        let highestNodes = alertTypes.filter(x => !x['parentNode']);
+        let selectedNode = alertTypes.find(x => x['typeKey'] == (selectedAlertType ?? this.defaultAlertType));
+        let selectedTitle = '';
+        if (selectedNode) {
+            selectedTitle = selectedNode['title'];
+        }
+        return (
+            <Dropdown
+                position="right"
+                title={selectedTitle}
+                wrapperClassName="alert-type-select"
+                buttonClassName="alert-type-select-btn"
+                menuClassName="alert-type-select-menu"
+            >
+                {this.renderChildren(highestNodes)}
+            </Dropdown>
+        );
+    }
+
+    buildTree(flat, key, parentAccessor) {
+        let parents = {};
+        for (let i = 0; i < flat.length; ++i) {
+            let parentKey = flat[i][parentAccessor];
+            if (parentKey in parents) {
+                let parentNode = parents[parentKey];
+                if (parentNode) {
+                    parentNode['children'].push(flat[i]);
+                    flat[i]['parentNode'] = parentNode;
+                }
+            } else {
+                let parentNode = flat.find(x => x[key] == parentKey);
+                parents[parentKey] = parentNode;
+                if (parentNode) {
+                    parentNode['children'] = [];
+                    parents[parentKey]['children'].push(flat[i]);
+                    flat[i]['parentNode'] = parentNode;
+                }
+            }
         }
     }
 
-    addCondition(event) {
-        event.preventDefault();
-        let alertOptions = this.state.alertOptions;
-
-        alertOptions['option' + (Object.keys(alertOptions).length + 1)] = null;
-        this.setState({ alertOptions });
+    handleChangeSearchRangeIdx(event) {
+        let newValue = event.target.value ?? '';
+        this.setState({ selectedSearchRangeIdx: newValue });
     }
 
-    submitForm(event) {
-        event.preventDefault();
-        let alertOptions = this.state.alertOptions;
-
-        console.log(alertOptions);
-        localStorage.setItem("alertOptions", JSON.stringify(alertOptions));
+    handleChangeVolumeRange(event) {
+        let newValue = event.target.value ?? '';
+        this.setState({ selectedVolumeRange: newValue });
     }
 
-    handleChangeStockCode(event) {
-        let alertOptions = this.state.alertOptions;
-        let stockCode = event.target.value;
-        let idx = alertOptions["stockCodes"].indexOf(stockCode);
-        if (idx !== -1) {
-            alertOptions["stockCodes"].splice(idx, 1);
+    async handleSaveAlertOption(event) {
+        const { selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange } = this.state;
+        let { alertOptions } = this.state;
+        let searchRange = this.searchRangeOptions[selectedSearchRangeIdx];
+        let option = {
+            typeKey: selectedAlertType,
+            exchange: searchRange['exchange'],
+            watchlistId: searchRange['watchlistId'],
+            average5Volume: selectedVolumeRange
         }
-        this.setState({ alertOptions });
+
+        let dup = alertOptions.find(o => {
+            if (o['typeKey'] != option['typeKey'])
+                return false;
+            if (!Helper.isEqual(o['exchange'], option['exchange']))
+                return false;
+            if (!Helper.isEqual(o['watchlistId'], option['watchlistId']))
+                return false;
+            if (!Helper.isEqual(o['average5Volume'], option['average5Volume']))
+                return false;
+
+            return true;
+        });
+
+        if (dup) {
+            alert('Đã tồn tại cảnh báo trên hệ thống!');
+        } else {
+            let stdData = Helper.dropFalsyFields(option);
+            try {
+                await this.apiAuthRequest(userApi.insertAlertOption.path, {
+                    method: userApi.insertAlertOption.method,
+                    data: stdData
+                });
+                if (!alertOptions)
+                    alertOptions = [];
+                alertOptions.push(option);
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+        this.setState({ createAlertModal: false, alertOptions });
     }
 
-    resetCondition(event) {
-        event.preventDefault();
-        let alertOptions = this.state.alertOptions;
-        alertOptions = { "stockCodes": alertOptions["stockCodes"] };
-        this.setState({ alertOptions });
+    renderSearchRange() {
+        const { selectedSearchRangeIdx } = this.state;
+        let options = this.searchRangeOptions.map((rangeOption, idx) => {
+            return (
+                <option value={idx}>{rangeOption['title']}</option>
+            );
+        });
+
+        return (
+            <Form.Control
+                className="search-range-control"
+                as="select"
+                aria-label="Default select example"
+                value={selectedSearchRangeIdx}
+                onChange={this.handleChangeSearchRangeIdx.bind(this)}
+            >
+                {options}
+            </Form.Control>
+        )
+    }
+
+    renderVolumeRange() {
+        const { selectedVolumeRange } = this.state;
+        let options = this.volumeOptions.map((volumeOption, idx) => {
+            return (
+                <option value={volumeOption['vol']}>{volumeOption['title']}</option>
+            );
+        });
+
+        return (
+            <Form.Control
+                className="search-range-control"
+                as="select"
+                aria-label="Default select example"
+                value={selectedVolumeRange}
+                onChange={this.handleChangeVolumeRange.bind(this)}
+            >
+                <option>Không hạn chế thanh khoản</option>
+                {options}
+            </Form.Control>
+        )
     }
 
     render() {
-        const { isShowModal } = this.state;
+        const that = this;
+        const { isShowModal, alertOptions, alertTypes, watchlists, createAlertModal } = this.state;
 
-        let content = (
-            <form onSubmit={this.submitForm.bind(this)}>
+        let content = <></>;
+        if (!alertTypes || !alertOptions || !watchlists) {
+            content = (
+                <div>Loading...</div>
+            );
+        } else {
+            console.log(alertOptions);
+            content = (
                 <div>
-                    {Object.keys(this.state.alertOptions).map(alertOptionKey => {
-                        if (alertOptionKey != 'stockCodes') {
-                            return (
-                                <div key={alertOptionKey}>
-                                    {this.renderAlertOptionInput(alertOptionKey, this.state.alertOptions[alertOptionKey])}
-                                </div>
-                            );
-                        }
-                    })}
-                </div>
-                <div>
-                    <label>Theo dõi những mã: </label>
-                    <div>
-                        {this.AvailStockCodes.map(stockCode => {
-                            return (
-                                <>
-                                    <input type="checkbox" checked={this.state.alertOptions["stockCodes"].includes(stockCode)} value={stockCode} onChange={this.handleChangeStockCode.bind(this)} />
-                                    <label>{stockCode}</label>
-                                    <br></br>
-                                </>
-                            );
-                        })}
+                    <div className="table-responsive">
+                        <table className="table table-striped table-bordered">
+                            <thead>
+                                <tr className="align-middle">
+                                    <th>ĐIỀU KIỆN CẢNH BÁO</th>
+                                    <th>PHẠM VI TÌM KIẾM</th>
+                                    <th>THAO TÁC</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {alertOptions.map(o => {
+                                    let alertTypeTitle = that.getAlertTypeTitle(o);
+                                    let alertRangeTitle = that.getAlertRangeTitle(o);
+                                    if (!alertTypeTitle || !alertRangeTitle) {
+                                        return <></>;
+                                    } else {
+                                        return (
+                                            <tr key={o['id']} className="">
+                                                <td>
+                                                    <input name="id" type="hidden" value={o['id']}></input>
+                                                    <span>{alertTypeTitle}</span>
+                                                </td>
+                                                <td><span>{alertRangeTitle}</span></td>
+                                                <td className="align-middle">
+                                                    <div className="alert-control">
+                                                        <Button className="alert-control-btn"><FontAwesomeIcon className="control-icon" icon={faPen} /></Button>
+                                                        <Button className="alert-control-btn remove"><FontAwesomeIcon className="control-icon" icon={faXmark} /></Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+                                })}
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-                <div>
-                    <button onClick={this.addCondition.bind(this)}>Thêm điều kiện</button>
-                    <button onClick={this.resetCondition.bind(this)}>Reset điều kiện</button>
-                </div>
-                <div>
-                    <input type="submit" value="Lưu thiết lập" />
-                </div>
-            </form>
-        );
+                    <Modal show={createAlertModal} onHide={this.handleCloseCreateModal.bind(this)} size='lg' centered>
+                        <Modal.Header closeButton>
+                            <Modal.Title>
+                                <div>
+                                    Tạo cảnh báo
+                                </div>
+                            </Modal.Title>
+                        </Modal.Header>
+                        <Modal.Body>
+                            <div>
+                                <div>
+                                    <div>
+                                        Điều kiện cảnh báo
+                                    </div>
+                                    <div className="alert-criteria highlight-area">
+                                        <div>
+                                            <span>Tiêu chí cảnh báo: </span>
+                                            {this.renderAlertTypeSelect(alertTypes)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span>Phạm vi tìm kiếm: </span>
+                                    <div className="search-range highlight-area">
+                                        <div className="search-range-control">
+                                            {this.renderSearchRange()}
+                                        </div>
+                                        <div className="search-range-control">
+                                            {this.renderVolumeRange()}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Modal.Body>
+                        <Modal.Footer>
+                            <Button onClick={this.handleSaveAlertOption.bind(this)}>Lưu cảnh báo</Button>
+                        </Modal.Footer>
+                    </Modal>
+                </div >
+            )
+        }
 
         if (isShowModal) {
             return (
-                <Modal show onHide={this.handleCloseModal} size='lg' centered>
+                <Modal show onHide={this.handleCloseModal} size='lg' dialogClassName="setting-modal-width" contentClassName="setting-modal-height" centered>
                     <Modal.Header closeButton>
                         <Modal.Title>
                             <div>
-                                Quản lý cảnh báo
+                                Thiết lập cảnh báo
                             </div>
                         </Modal.Title>
                     </Modal.Header>
                     <Modal.Body>
                         {content}
                     </Modal.Body>
+                    <Modal.Footer>
+                        <Button onClick={this.handleOpenCreateModal.bind(this)}>Tạo cảnh báo</Button>
+                    </Modal.Footer>
                 </Modal>
             );
         } else {
             return (
                 <>
-                   {content}
+                    {content}
                 </>
             );
         }

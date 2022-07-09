@@ -11,6 +11,7 @@ import WebAPIAuth from '../../../common/request/WebAPIAuth';
 import DataService from '../../../common/request/DataService';
 import StockChart from '../StockChart';
 import latinize from 'latinize';
+import Helper from '../../../common/helper';
 
 export default class StockTicker extends Component {
     constructor(props) {
@@ -370,17 +371,6 @@ export default class StockTicker extends Component {
             });
     }
 
-    dropNullFields(obj) {
-        let newObj = {};
-        for (const key in obj) {
-            if (obj[key]) {
-                newObj[key] = obj[key];
-            }
-        }
-
-        return newObj;
-    }
-
     standardizeStockObj(stockObjs) {
         let stdStockObjs = stockObjs.filter(s => (typeof s === 'object' && s !== null) && Object.keys(s).length > 0);
         stdStockObjs.map(s => {
@@ -402,7 +392,7 @@ export default class StockTicker extends Component {
 
     async loadSnapshot() {
         const that = this;
-        let stdParams = this.dropNullFields(this.filter);
+        let stdParams = Helper.dropFalsyFields(this.filter);
         try {
             let response = await this.dataSvcRequest(dataServiceApi.snapshot.path, {
                 method: dataServiceApi.snapshot.method,
@@ -815,7 +805,7 @@ export default class StockTicker extends Component {
                     codes: [symbolObj.symbol],
                     exchangeCodes: [symbolObj.exchangeCode]
                 };
-                let stdParams = this.dropNullFields(this.filter);
+                let stdParams = Helper.dropFalsyFields(this.filter);
                 response = await this.dataSvcRequest(dataServiceApi.snapshot.path, {
                     method: dataServiceApi.snapshot.method,
                     params: stdParams,
