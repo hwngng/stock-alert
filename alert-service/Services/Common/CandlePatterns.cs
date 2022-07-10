@@ -208,7 +208,7 @@ namespace AlertService.Services.Common
 				++j;
 			}
 			cwh.LowHandle = smaInd.Points[lowright];
-			// rh = rh;
+
 			// validate handle depth, deepest is 15% from right high
 			if (cwh.RightHigh.Value - cwh.LowHandle.Value > handleDepth * cwh.RightHigh.Value
 				|| cwh.RightHigh.Value - cwh.LowHandle.Value <= 0)
@@ -231,12 +231,7 @@ namespace AlertService.Services.Common
 
 			cwh.Dip = smaInd.Points[dip];
 			cwh.DipIndex = dip;
-			// dip = i;
 
-			// validate dip duration
-			// var rightSlopeDuration = rh - dip;
-			// if (rightSlopeDuration < 1.5 * 5 || rightSlopeDuration > 6 * 5)     // 1 week = 5 trading days
-			// 	return null;
 			// validate dip price
 			var dipChange = cwh.RightHigh.Value - cwh.Dip.Value;
 			if (dipChange < cupDepthRightMin * cwh.RightHigh.Value

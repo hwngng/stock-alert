@@ -7,6 +7,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGear } from '@fortawesome/free-solid-svg-icons'
 import AlertSettings from '../AlertSettings';
 import alertServiceApi from '../../../common/api/alertServiceApi';
+import WebAPIAuth from '../../../common/request/WebAPIAuth';
+import userApi from '../../../common/api/userApi';
 
 export default class StockAlert extends PureComponent {
 
@@ -16,67 +18,15 @@ export default class StockAlert extends PureComponent {
         this.config = props.config;
 
         this.state = {
-            isShowSetting: false
+            isShowSetting: false,
+            alertOptions: []
         };
+        this.hub = null;
+        this.apiAuthRequest = WebAPIAuth(this.config['webApiHost']);
 
-        this.alertOption = {
-            "highestInRange": {
-                "fromDate": "2020-06-22",
-                "toDate": "2021-06-22"
-            },
-            "lowestInRange": {
-                "fromDate": "2020-06-22",
-                "toDate": "2021-06-22"
-            },
-            "priceTrendPattern": [1, -1, 1, -2],
-            "TASignals": {
-                "sma": 1
-            },
-            "stockCodes": ["FLC", "HAG", "HSG", "MBB", "PDR", "PVD", "SHB", "VIC", "VND", "ASP", "FTS", "GVR", "HAG", "HCM", "HDC", "SSI", "TCB", "TGG", "VOS", "VTO"]
-        }
-        this.alertOption = {};
-        let alertOptionsStr = localStorage.getItem("alertOptions");
-        let alertOptions = {}
-        if (alertOptionsStr) {
-            try {
-                alertOptions = JSON.parse(alertOptionsStr);
-                if ("highestInRange" in alertOptions) {
-                    alertOptions["highestInRange"].toDate = this.formatDate(new Date(alertOptions["highestInRange"].toDate));
-                    let dateOffset = (24 * 60 * 60 * 1000) * parseInt(alertOptions["highestInRange"].fromDate);
-                    let fromDate = new Date();
-                    fromDate.setTime(new Date(alertOptions["highestInRange"].toDate).getTime() - dateOffset);
-                    alertOptions["highestInRange"].fromDate = this.formatDate(new Date(fromDate));
-                }
-                if ("lowestInRange" in alertOptions) {
-                    alertOptions["lowestInRange"].toDate = this.formatDate(new Date(alertOptions["lowestInRange"].toDate));
-                    let dateOffset = (24 * 60 * 60 * 1000) * parseInt(alertOptions["lowestInRange"].fromDate);
-                    let fromDate = new Date();
-                    fromDate.setTime(new Date(alertOptions["lowestInRange"].toDate).getTime() - dateOffset);
-                    alertOptions["lowestInRange"].fromDate = this.formatDate(new Date(fromDate));
-                }
-                if ("priceTrendPattern" in alertOptions) {
-                    alertOptions["priceTrendPattern"].forEach((val, idx) => alertOptions["priceTrendPattern"][idx] = parseInt(val));
-                }
-                this.alertOption = alertOptions;
-            } catch (e) {
-
-            }
-        }
-
-        console.log(this.alertOption);
-
-        this.alertResult = {
-            "highestInRange": [],
-            "lowestInRange": [],
-            "priceTrendPattern": [],
-            "taSignals": {
-            }
-        };
-
-        this.apiRequestIntervalID = 0;
     }
 
-    connect() {
+    async connect() {
         let connection = new HubConnectionBuilder()
             .withUrl((new URL(alertServiceApi.realtime.path, this.config['alertServiceHost'])).toString())
             .withAutomaticReconnect()
@@ -98,31 +48,14 @@ export default class StockAlert extends PureComponent {
             console.log(message);
         });
 
-        connection.start()
-            .then(() => {
-                console.info('Connected successfully to alert service');
-            })
-            .catch(err => {
-                console.error(err.toString());
-            });
+        try {
+            await connection.start();
+            console.info('Connected successfully to alert service');
+        } catch (e) {
+            console.error(e);
+        };
 
         return connection;
-    }
-
-    showAlert(type, stockCode) {
-        switch (type) {
-            case "highestInRange":
-                NotificationManager.info(`${stockCode} giá tăng phá đỉnh 1 năm`, "", 3000);
-                break;
-            case "lowestInRange":
-                NotificationManager.info(`${stockCode} giá giảm thủng đáy 1 năm`, "", 3000);
-                break;
-            case "priceTrendPattern":
-                NotificationManager.info(`${stockCode} giá tăng 3 phiên liên tục`, "", 3000);
-                break;
-            default:
-                break;
-        }
     }
 
     formatDate(date) {
@@ -144,71 +77,30 @@ export default class StockAlert extends PureComponent {
         return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
     }
 
-    createAlerts(alertQueue, stockAlert) {
-        let timeout = 100;
-        Object.keys(alertQueue).forEach(function (key) {
-            if (key !== "taSignals") {
-                alertQueue[key].forEach(function (el) {
-                    setTimeout(stockAlert.showAlert, (timeout += 1000), key, el);
-                });
-            }
-        });
-    }
+    loadAlertOption() {
+        const that = this;
 
-    removeOldAlert(alertQueue, stockAlert) {
-        Object.keys(alertQueue).forEach(function (key) {
-            if (key in stockAlert.alertResult) {
-                if (key !== "taSignals") {
-                    stockAlert.alertResult[key] = stockAlert.alertResult[key].filter(function (value, index, arr) {
-                        return !alertQueue[key].includes(value);
-                    });
+        this.apiAuthRequest(userApi.alertOptions.path, {
+            method: userApi.alertOptions.method
+        })
+            .then(response => {
+                let alertOptionObj = response.data;
+                if (!alertOptionObj && !Array.isArray(alertOptionObj)) {
+                    console.log(response);
+                    return;
                 }
-            }
-        });
-    }
-
-    stockAlertSchedule(stockAlert) {
-        let alertOption = stockAlert.alertOption;
-        let alertQueue = {};
-        console.log(alertOption);
-        axios.post(stockAlert.apiUrl, alertOption)
-            .then(function (response) {
-                let tmpAlertResult = response.data;
-                Object.keys(tmpAlertResult).forEach(function (key) {
-                    if (key in stockAlert.alertResult) {
-                        if (key !== "taSignals") {
-                            // merge arrays
-                            tmpAlertResult[key].forEach(function (el) {
-                                if (!stockAlert.alertResult[key].includes(el)) {
-                                    stockAlert.alertResult[key].push(el);
-                                    if (!(key in alertQueue)) {
-                                        alertQueue[key] = [];
-                                    }
-                                    alertQueue[key].push(el);
-                                }
-                            })
-                        }
-                    }
-                });
-                if (alertQueue && Object.keys(alertQueue).length > 0) {
-                    stockAlert.createAlerts(alertQueue, stockAlert);
-                    setTimeout(stockAlert.removeOldAlert, 60000, alertQueue, stockAlert);
-                }
+                this.hub?.invoke('SubscribeAlerts', alertOptionObj);
+                that.setState({ alertOptions: alertOptionObj });
             })
+            .catch(error => {
+                console.log(error);
+            });
     }
 
-    notifyTest() {
-        NotificationManager.info('Moshi moshi');
-    }
-
-    componentDidMount() {
+    async componentDidMount() {
         let stockAlert = this;
-        // this.apiRequestIntervalID = setInterval(this.stockAlertSchedule, 1500, stockAlert);
-        this.connect();
-    }
-
-    componentWillUnmount() {
-        clearInterval(this.apiRequestIntervalID);
+        this.hub = await this.connect();
+        this.loadAlertOption();
     }
 
     handleOpenModal() {
@@ -220,11 +112,10 @@ export default class StockAlert extends PureComponent {
     }
 
     render() {
-        const { isShowSetting } = this.state;
+        const { isShowSetting, alertOptions } = this.state;
 
         return (
             <div>
-                <NotificationContainer />
                 <h3>Thông báo</h3>
                 <div className="table-responsive">
                     <table className="table table-striped table-bordered alert-table">
@@ -274,7 +165,13 @@ export default class StockAlert extends PureComponent {
                     </table>
                 </div>
                 {isShowSetting && (
-                    <AlertSettings config={this.config} isShowModal={isShowSetting} handleCloseModal={this.handleCloseModal.bind(this)}></AlertSettings>
+                    <AlertSettings
+                        config={this.config}
+                        isShowModal={isShowSetting}
+                        handleCloseModal={this.handleCloseModal.bind(this)}
+                        hub={this.hub}
+                        alertOptions={alertOptions}
+                    ></AlertSettings>
                 )}
             </div>
         );

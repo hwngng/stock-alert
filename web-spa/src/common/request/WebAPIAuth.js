@@ -40,6 +40,7 @@ const refreshAccessToken = async (apiHost, tokenModel) => {
 		return tokenModel;
 	} catch (e) {
 		console.log(e);
+		localStorage.setItem('errorRefresh', JSON.stringify(e));
 		await handleTokenInvalid(apiHost, tokenModel);
 	}
 }

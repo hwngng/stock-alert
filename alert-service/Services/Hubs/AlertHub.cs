@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
+using AlertService.Models;
 using AlertService.Services.Models;
 using Microsoft.AspNetCore.SignalR;
 
@@ -23,6 +25,16 @@ namespace AlertService.Services.Hubs
                 await Clients.All.Alert(alert);
             });
 			await Task.WhenAll(tasks);
+		}
+
+		public async Task SubscribeAlert(AlertOption alertOption)
+		{
+			Console.WriteLine(JsonSerializer.Serialize(alertOption));
+		}
+
+		public async Task SubscribeAlerts(List<AlertOption> alertOptions)
+		{
+			Console.WriteLine(JsonSerializer.Serialize(alertOptions));
 		}
 	}
 }

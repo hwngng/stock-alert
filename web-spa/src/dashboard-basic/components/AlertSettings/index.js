@@ -16,10 +16,11 @@ export default class AlertSettings extends Component {
         this.handleCloseModal = this.props.handleCloseModal;
         this.config = props.config;
         this.editOption = props.option ?? {};
+        this.hub = props.hub;
 
         this.state = {
             isShowModal: false,
-            alertOptions: null,
+            alertOptions: props.alertOptions ?? null,
             alertTypes: null,
             watchlists: null,
             createAlertModal: false,
@@ -61,6 +62,7 @@ export default class AlertSettings extends Component {
     }
 
     componentDidMount() {
+        const { alertOptions } = this.state;
         let { isShowModal } = this.state;
 
         isShowModal = this.props.isShowModal;
@@ -68,8 +70,9 @@ export default class AlertSettings extends Component {
         this.setState({ isShowModal });
 
         this.loadAlertType();
-        this.loadAlertOption();
+        alertOptions && this.loadAlertOption();
         this.loadWatchlist();
+
     }
 
     loadAlertType() {
@@ -106,7 +109,10 @@ export default class AlertSettings extends Component {
         })
             .then(response => {
                 let alertOptionObj = response.data;
-                if (!alertOptionObj) return;
+                if (!alertOptionObj || !Array.isArray(alertOptionObj)) {
+                    console.log(response);
+                    return;
+                }
                 that.setState({ alertOptions: alertOptionObj });
             })
             .catch(error => {
@@ -322,13 +328,19 @@ export default class AlertSettings extends Component {
         } else {
             let stdData = Helper.dropFalsyFields(option);
             try {
-                await this.apiAuthRequest(userApi.insertAlertOption.path, {
+                let resp = await this.apiAuthRequest(userApi.insertAlertOption.path, {
                     method: userApi.insertAlertOption.method,
                     data: stdData
                 });
-                if (!alertOptions)
-                    alertOptions = [];
-                alertOptions.push(option);
+                if (resp['status'] != 1) {
+                    alert('Thêm cảnh báo không thành công');
+                } else {
+                    option['id'] = resp['id'];
+                    if (!alertOptions)
+                        alertOptions = [];
+                    alertOptions.push(option);
+                    this.hub?.invoke('SubscribeAlert', option);
+                }
             } catch (e) {
                 console.log(e);
             }

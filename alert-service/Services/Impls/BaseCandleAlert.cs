@@ -76,7 +76,7 @@ namespace AlertService.Services.Impls
 				alerts.AddRange(added);
 		}
 
-		public Alert CreateAlert(string symbol, string message)
+		public Alert CreateAlert(string symbol, string message, string exchange = null)
 		{
 			return string.IsNullOrEmpty(message) ?
 					null
@@ -84,6 +84,7 @@ namespace AlertService.Services.Impls
 					{
 						Symbol = symbol,
 						Message = message,
+						Exchange = exchange,
 						PublishedAt = DateTime.UtcNow
 					};
 		}
