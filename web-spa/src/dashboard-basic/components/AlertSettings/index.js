@@ -26,7 +26,8 @@ export default class AlertSettings extends Component {
             createAlertModal: false,
             selectedAlertType: null,
             selectedSearchRangeIdx: 0,
-            selectedVolumeRange: null
+            selectedVolumeRange: null,
+            edittingOption: null
         };
 
         this.exchanges = this.config['exchanges'];
@@ -191,12 +192,19 @@ export default class AlertSettings extends Component {
         return alertType ? alertType['title'] : null;
     }
 
-    handleOpenCreateModal(e) {
+    handleOpenCreateModal(e, edittingOption = {}) {
         let { selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange } = this.state;
-        selectedAlertType = this.defaultAlertType;
+        selectedAlertType = edittingOption['typeKey'] ?? this.defaultAlertType;
         selectedSearchRangeIdx = 0;
-        selectedVolumeRange = ''
-        this.setState({ createAlertModal: true, selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange });
+        if (edittingOption['watchlistId'] || edittingOption['exchange']) {
+            let firstIdx = this.searchRangeOptions.findIndex(o => (edittingOption['exchange'] && o['exchange'] == edittingOption['exchange'])
+                || (edittingOption['watchlistId'] && o['watchlistId'] == edittingOption['watchlistId']));
+            if (firstIdx > 0) {
+                selectedSearchRangeIdx = firstIdx;
+            }
+        }
+        selectedVolumeRange = edittingOption['average5Volume'] ?? '';
+        this.setState({ createAlertModal: true, selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange, edittingOption });
     }
 
     handleCloseCreateModal(e) {
@@ -301,7 +309,7 @@ export default class AlertSettings extends Component {
 
     async handleSaveAlertOption(event) {
         const { selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange } = this.state;
-        let { alertOptions } = this.state;
+        let { alertOptions, edittingOption } = this.state;
         let searchRange = this.searchRangeOptions[selectedSearchRangeIdx];
         let option = {
             typeKey: selectedAlertType,
@@ -326,27 +334,53 @@ export default class AlertSettings extends Component {
         if (dup) {
             alert('Đã tồn tại cảnh báo trên hệ thống!');
         } else {
-            let stdData = Helper.dropFalsyFields(option);
-            try {
-                let resp = await this.apiAuthRequest(userApi.insertAlertOption.path, {
-                    method: userApi.insertAlertOption.method,
-                    data: stdData
-                });
-                if (resp['status'] != 1) {
-                    alert('Thêm cảnh báo không thành công');
-                } else {
-                    option['id'] = resp['id'];
-                    if (!alertOptions)
-                        alertOptions = [];
-                    alertOptions.push(option);
-                    this.hub?.invoke('SubscribeAlert', option);
+            if (edittingOption) {
+                option['id'] = edittingOption['id'];
+                let stdData = Helper.dropFalsyFields(option);
+                try {
+                    let resp = await this.apiAuthRequest(userApi.updateAlertOption.path, {
+                        method: userApi.updateAlertOption.method,
+                        data: stdData
+                    });
+                    let apiData = resp['data'];
+                    if (!resp || apiData != 1) {
+                        alert('Thêm cảnh báo không thành công');
+                    } else {
+                        this.hub?.invoke('UnsubscribeAlerts', [edittingOption]);
+                        edittingOption['typeKey'] = option.typeKey;
+                        edittingOption['exchange'] = option.exchange;
+                        edittingOption['watchlistId'] = option.watchlistId;
+                        edittingOption['average5Volume'] = option.average5Volume;
+                        edittingOption = {};
+                        this.hub?.invoke('SubscribeAlerts', [stdData]);
+                    }
+                } catch (e) {
+                    console.log(e);
                 }
-            } catch (e) {
-                console.log(e);
+            } else {
+                let stdData = Helper.dropFalsyFields(option);
+                try {
+                    let resp = await this.apiAuthRequest(userApi.insertAlertOption.path, {
+                        method: userApi.insertAlertOption.method,
+                        data: stdData
+                    });
+                    let apiData = resp['data'];
+                    if (!resp || apiData['status'] != 1) {
+                        alert('Thêm cảnh báo không thành công');
+                    } else {
+                        option['id'] = apiData['id'];
+                        if (!alertOptions)
+                            alertOptions = [];
+                        alertOptions.push(option);
+                        this.hub?.invoke('SubscribeAlerts', [stdData]);
+                    }
+                } catch (e) {
+                    console.log(e);
+                }
             }
         }
 
-        this.setState({ createAlertModal: false, alertOptions });
+        this.setState({ createAlertModal: false, alertOptions, edittingOption });
     }
 
     renderSearchRange() {
@@ -392,6 +426,19 @@ export default class AlertSettings extends Component {
         )
     }
 
+    handleEditAlertOption(option) {
+        this.oldOption = option;
+        this.handleOpenCreateModal(null, option);
+    }
+
+    handleRemoveAlertOption(optionIdx) {
+        const { alertOptions } = this.state;
+        const option = alertOptions[optionIdx];
+        this.hub.invoke('UnsubscribeAlerts', [option]);
+        alertOptions.splice(optionIdx, 1);
+        this.setState({ alertOptions });
+    }
+
     render() {
         const that = this;
         const { isShowModal, alertOptions, alertTypes, watchlists, createAlertModal } = this.state;
@@ -415,7 +462,7 @@ export default class AlertSettings extends Component {
                                 </tr>
                             </thead>
                             <tbody>
-                                {alertOptions.map(o => {
+                                {alertOptions.map((o, idx) => {
                                     let alertTypeTitle = that.getAlertTypeTitle(o);
                                     let alertRangeTitle = that.getAlertRangeTitle(o);
                                     if (!alertTypeTitle || !alertRangeTitle) {
@@ -430,8 +477,8 @@ export default class AlertSettings extends Component {
                                                 <td><span>{alertRangeTitle}</span></td>
                                                 <td className="align-middle">
                                                     <div className="alert-control">
-                                                        <Button className="alert-control-btn"><FontAwesomeIcon className="control-icon" icon={faPen} /></Button>
-                                                        <Button className="alert-control-btn remove"><FontAwesomeIcon className="control-icon" icon={faXmark} /></Button>
+                                                        <Button className="alert-control-btn" onClick={e => that.handleEditAlertOption(o)}><FontAwesomeIcon className="control-icon" icon={faPen} /></Button>
+                                                        <Button className="alert-control-btn remove" onClick={e => that.handleRemoveAlertOption(idx)}><FontAwesomeIcon className="control-icon" icon={faXmark} /></Button>
                                                     </div>
                                                 </td>
                                             </tr>

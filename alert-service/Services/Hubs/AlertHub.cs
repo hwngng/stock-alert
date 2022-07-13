@@ -27,12 +27,12 @@ namespace AlertService.Services.Hubs
 			await Task.WhenAll(tasks);
 		}
 
-		public async Task SubscribeAlert(AlertOption alertOption)
+		public async Task SubscribeAlerts(List<AlertOption> alertOptions)
 		{
-			Console.WriteLine(JsonSerializer.Serialize(alertOption));
+			Console.WriteLine(JsonSerializer.Serialize(alertOptions));
 		}
 
-		public async Task SubscribeAlerts(List<AlertOption> alertOptions)
+		public async Task UnsubscribeAlerts(List<AlertOption> alertOptions)
 		{
 			Console.WriteLine(JsonSerializer.Serialize(alertOptions));
 		}

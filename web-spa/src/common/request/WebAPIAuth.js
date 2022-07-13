@@ -1,5 +1,6 @@
 import axios from "axios";
 import userApi from "../api/userApi";
+import Helper from "../helper";
 import Session from "../session";
 import WebAPI from "./WebAPI";
 
@@ -73,11 +74,20 @@ const WebAPIAuth = (apiHost = '', tokenModel = null) => {
 			return response
 		}, async function (error) {
 			const originalRequest = error.config;
-			if (error.response.status === 401 && !originalRequest._retry) {
+			let isRefreshingToken = sessionStorage.getItem('isRefreshingToken');
+			let waitCounter = 0;
+			while (isRefreshingToken == '1' && waitCounter < 5) {
+				await Helper.sleep(500);
+				isRefreshingToken = sessionStorage.getItem('isRefreshingToken');
+				++waitCounter;
+			}
+			if (error.response.status === 401 && !originalRequest._retry && isRefreshingToken != '1') {
 				originalRequest._retry = true;
+				sessionStorage.setItem('isRefreshingToken', '1');
 				const newTokenModel = await refreshAccessToken(apiHost, tokenModel);
-				Session.saveAuth(newTokenModel);
 				tokenModel = newTokenModel;
+				Session.saveAuth(newTokenModel);
+				sessionStorage.removeItem('isRefreshingToken');
 				axios.defaults.headers.common['Authorization'] = 'Bearer ' + tokenModel['accessToken'];
 				return instance(originalRequest);
 			}

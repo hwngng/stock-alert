@@ -76,6 +76,9 @@ const Helper = {
 		if (!arg1 && !arg2)
 			return true;
 		return arg1 == arg2;
+	},
+	sleep(ms) {
+		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 }
 

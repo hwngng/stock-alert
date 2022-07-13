@@ -61,7 +61,7 @@ const userApi = {
 	},
 	updateAlertOption: {
 		method: 'put',
-		path: '/api/AlertOption'
+		path: '/api/alertOption'
 	},
 	alertTypes: {
 		method: 'get',

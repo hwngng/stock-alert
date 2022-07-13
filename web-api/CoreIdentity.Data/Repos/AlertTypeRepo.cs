@@ -25,7 +25,8 @@ namespace CoreIdentity.Data.Repos
 				TypeKey = x.TypeKey,
 				Title = x.Title,
 				Parent = x.Parent
-			});
+			})
+			.OrderBy(x => x.TypeKey);
 			return await query.ToListAsync();
 		}
 
