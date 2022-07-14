@@ -81,6 +81,9 @@ const WebAPIAuth = (apiHost = '', tokenModel = null) => {
 				isRefreshingToken = sessionStorage.getItem('isRefreshingToken');
 				++waitCounter;
 			}
+			if (waitCounter > 0) {
+				tokenModel = Session.getAuth();
+			}
 			if (error.response.status === 401 && !originalRequest._retry && isRefreshingToken != '1') {
 				originalRequest._retry = true;
 				sessionStorage.setItem('isRefreshingToken', '1');
