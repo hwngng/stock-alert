@@ -9,6 +9,9 @@ import AlertSettings from '../AlertSettings';
 import alertServiceApi from '../../../common/api/alertServiceApi';
 import WebAPIAuth from '../../../common/request/WebAPIAuth';
 import userApi from '../../../common/api/userApi';
+import { timeFormat } from 'd3-time-format';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default class StockAlert extends PureComponent {
 
@@ -19,14 +22,16 @@ export default class StockAlert extends PureComponent {
 
         this.state = {
             isShowSetting: false,
-            alertOptions: []
+            alertOptions: [],
+            alerts: []
         };
         this.hub = null;
         this.apiAuthRequest = WebAPIAuth(this.config['webApiHost']);
-
+        this.alertTimeFormat = timeFormat('%H:%M');
     }
 
     async connect() {
+        const that = this;
         let connection = new HubConnectionBuilder()
             .withUrl((new URL(alertServiceApi.realtime.path, this.config['alertServiceHost'])).toString())
             .withAutomaticReconnect()
@@ -46,6 +51,12 @@ export default class StockAlert extends PureComponent {
 
         connection.on("Alert", (message) => {
             console.log(message);
+            let { alerts } = that.state;
+            alerts = alerts.concat(message);
+
+            that.setState({ alerts });
+
+            that.showNotis(message);
         });
 
         try {
@@ -53,6 +64,7 @@ export default class StockAlert extends PureComponent {
             console.info('Connected successfully to alert service');
         } catch (e) {
             console.error(e);
+            connection = null;
         };
 
         return connection;
@@ -98,9 +110,27 @@ export default class StockAlert extends PureComponent {
     }
 
     async componentDidMount() {
-        let stockAlert = this;
         this.hub = await this.connect();
         this.loadAlertOption();
+    }
+
+    showNotis(alerts) {
+        const that = this;
+        let delayTime = 0;
+        let delayInterval = 1000;
+        alerts.forEach(alert => {
+            setTimeout(() => {
+                let noti = (
+                    <div className="alert-noti">
+                        <div className="alert-noti-symbol">{alert['symbol']}</div>
+                        <div>{alert['message']}</div>
+                        <div>{that.alertTimeFormat(new Date(alert['publishedAt']))}</div>
+                    </div>
+                );
+                toast(noti);
+            }, delayTime);
+            delayTime += delayInterval;
+        });
     }
 
     handleOpenModal() {
@@ -111,13 +141,46 @@ export default class StockAlert extends PureComponent {
         this.setState({ isShowSetting: false });
     }
 
+    renderAlerts() {
+        const that = this;
+        const { alerts } = this.state;
+
+        var ret = [];
+
+        for (let i = alerts.length - 1; i >= 0; --i) {
+            let alert = alerts[i];
+            ret.push(
+                (
+                    <tr key={i}>
+                        <td className="alert-symbol">{alert['symbol']}</td>
+                        <td className="border-right-0">{alert['message']}</td>
+                        <td className="border-left-0">{that.alertTimeFormat(new Date(alert['publishedAt']))}</td>
+                    </tr>
+                )
+            );
+        }
+        return ret;
+    }
+
     render() {
         const { isShowSetting, alertOptions } = this.state;
 
         return (
             <div>
+                <ToastContainer
+                    position="bottom-right"
+                    autoClose={5000}
+                    hideProgressBar
+                    newestOnTop={false}
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                    limit={3}
+                />
                 <h3>Thông báo</h3>
-                <div className="table-responsive">
+                <div className="table-responsive table-fix-head">
                     <table className="table table-striped table-bordered alert-table">
                         <colgroup>
                             <col className="alert-symbol col-2"></col>
@@ -136,31 +199,7 @@ export default class StockAlert extends PureComponent {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td className="alert-symbol">MBB</td>
-                                <td className="border-right-0">Giá hiện tại cắt lên đường SMA(5)</td>
-                                <td className="border-left-0">13:22</td>
-                            </tr>
-                            <tr>
-                                <td className="alert-symbol">VND</td>
-                                <td className="border-right-0">Giá hiện tại cắt lên đường SMA(10)</td>
-                                <td className="border-left-0">13:11</td>
-                            </tr>
-                            <tr>
-                                <td className="alert-symbol">VND</td>
-                                <td className="border-right-0">Nến ngày tạo thành mô hình Three White Soldiers</td>
-                                <td className="border-left-0">11:33</td>
-                            </tr>
-                            <tr>
-                                <td className="alert-symbol">MBB</td>
-                                <td className="border-right-0">Nến ngày tạo thành mô hình cái nêm</td>
-                                <td className="border-left-0">10:47</td>
-                            </tr>
-                            <tr>
-                                <td className="alert-symbol">SSI</td>
-                                <td className="border-right-0">Nến ngày tạo thành mô hình Sao mai</td>
-                                <td className="border-left-0">9:20</td>
-                            </tr>
+                            {this.renderAlerts()}
                         </tbody>
                     </table>
                 </div>

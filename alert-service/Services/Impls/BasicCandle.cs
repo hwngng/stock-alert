@@ -52,21 +52,24 @@ namespace AlertService.Services.Impls
 				}
 				_lastScanPrice[sma.Symbol] = sma;
 				var stockData = await _dataProvider.GetLatestStockData(sma.Symbol);
+				var exchange = (await _dataProvider.GetLatestStockInfo(sma.Symbol)).ExchangeCode;
 
 				var alerts = new List<Alert>();
 
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, Test(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, BullishEngulfing(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, BearishEngulfing(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, ThreeBlackCrows(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, ThreeWhiteSoldiers(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, Hammer(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, InvertedHammer(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, EveningStar(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, MorningStar(stockData, sma)));
+				addAlertIfNotNull(alerts, CreateAlert("Test", sma.Symbol, Test(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert("BullishEngulfing", sma.Symbol, BullishEngulfing(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert("BearishEngulfing", sma.Symbol, BearishEngulfing(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert("ThreeBlackCrows", sma.Symbol, ThreeBlackCrows(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert("ThreeWhiteSoldiers", sma.Symbol, ThreeWhiteSoldiers(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert("Hammer", sma.Symbol, Hammer(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert("InvertedHammer", sma.Symbol, InvertedHammer(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert("EveningStar", sma.Symbol, EveningStar(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert("MorningStar", sma.Symbol, MorningStar(stockData, sma), exchange));
 
 				Console.WriteLine("Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
-				await _alertHub.Clients.All.Alert(alerts);
+				if (alerts.Count > 0) {
+					await _alertHub.Clients.All.Alert(alerts);
+				}
 			}
 			catch (Exception e)
 			{
@@ -74,12 +77,12 @@ namespace AlertService.Services.Impls
 			}
 		}
 
-		public string Test(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string Test(Stock stockData, SMAGeneral sma)
 		{
-			return JsonSerializer.Serialize(stockData.HistoricalPrice.Last()) + " " + JsonSerializer.Serialize(sma);
+			return AlertMessageFormat.Test;
 		}
 
-		public string BearishEngulfing(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string BearishEngulfing(Stock stockData, SMAGeneral sma)
 		{
 			var last2 = getLastNTradingDay(stockData.HistoricalPrice, sma, 2);
 			if (last2 is null || last2.Count != 2)
@@ -90,7 +93,7 @@ namespace AlertService.Services.Impls
 			return AlertMessageFormat.BearishEngulfing;
 		}
 
-		public string BullishEngulfing(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string BullishEngulfing(Stock stockData, SMAGeneral sma)
 		{
 			var last2 = getLastNTradingDay(stockData.HistoricalPrice, sma, 2);
 			if (last2 is null || last2.Count != 2)
@@ -101,7 +104,7 @@ namespace AlertService.Services.Impls
 			return AlertMessageFormat.BullishEngulfing;
 		}
 
-		public string Hammer(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string Hammer(Stock stockData, SMAGeneral sma)
 		{
 			var last1 = getLastNTradingDay(stockData.HistoricalPrice, sma, 1);
 			if (last1 is null || last1.Count != 1)
@@ -112,7 +115,7 @@ namespace AlertService.Services.Impls
 			return AlertMessageFormat.Hammer;
 		}
 
-		public string InvertedHammer(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string InvertedHammer(Stock stockData, SMAGeneral sma)
 		{
 			var last1 = getLastNTradingDay(stockData.HistoricalPrice, sma, 1);
 			if (last1 is null || last1.Count != 1)
@@ -123,7 +126,7 @@ namespace AlertService.Services.Impls
 			return AlertMessageFormat.InvertedHammer;
 		}
 
-		public string MorningStar(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string MorningStar(Stock stockData, SMAGeneral sma)
 		{
 			var last3 = getLastNTradingDay(stockData.HistoricalPrice, sma, 3);
 			if (last3 is null || last3.Count != 3)
@@ -134,7 +137,7 @@ namespace AlertService.Services.Impls
 			return AlertMessageFormat.MorningStar;
 		}
 
-		public string EveningStar(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string EveningStar(Stock stockData, SMAGeneral sma)
 		{
 			var last3 = getLastNTradingDay(stockData.HistoricalPrice, sma, 3);
 			if (last3 is null || last3.Count != 3)
@@ -145,7 +148,7 @@ namespace AlertService.Services.Impls
 			return AlertMessageFormat.EveningStar;
 		}
 
-		public string ThreeWhiteSoldiers(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string ThreeWhiteSoldiers(Stock stockData, SMAGeneral sma)
 		{
 			var last3 = getLastNTradingDay(stockData.HistoricalPrice, sma, 3);
 			if (last3 is null || last3.Count != 3)
@@ -156,7 +159,7 @@ namespace AlertService.Services.Impls
 			return AlertMessageFormat.ThreeWhiteSoldiers;
 		}
 
-		public string ThreeBlackCrows(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string ThreeBlackCrows(Stock stockData, SMAGeneral sma)
 		{
 			var last3 = getLastNTradingDay(stockData.HistoricalPrice, sma, 3);
 			if (last3 is null || last3.Count != 3)

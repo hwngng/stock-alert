@@ -10,5 +10,7 @@ namespace AlertService.Services.Models
         public static readonly string MorningStar = "Nến ngày tạo thành mô hình Morning Star";
         public static readonly string ThreeBlackCrows = "Nến ngày tạo thành mô hình Three Black Crows";
         public static readonly string ThreeWhiteSoldiers = "Nến ngày tạo thành mô hình Three White Soldiers";
+        public static readonly string CupWithHandle = "Nến ngày tạo thành mô hình Cup With Handle";
+        public static readonly string Test = "Nến ngày tạo thành mô hình test";
     }
 }

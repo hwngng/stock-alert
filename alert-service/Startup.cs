@@ -51,7 +51,7 @@ namespace AlertService
             services.AddSingleton(wsSettings);
             services.AddSingleton<IWebSocketHub, WebSocketHub>();
 			// services.AddSingleton<IHandleMessage, TestAlert>();
-            // services.AddSingleton<IHandleMessage, BasicCandle>();
+            services.AddSingleton<IHandleMessage, BasicCandle>();
             services.AddSingleton<IHandleMessage, ComplexCandle>();
             services.AddSingleton<ComplexCandle>();
 			services.AddSingleton<IDistributeMessage, DistributeMessage>();
@@ -70,7 +70,7 @@ namespace AlertService
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseHttpsRedirection();
+            // app.UseHttpsRedirection();
 
             app.UseRouting();
             app.UseCors("CorsPolicy");

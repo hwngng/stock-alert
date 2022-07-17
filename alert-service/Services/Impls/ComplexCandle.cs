@@ -53,13 +53,17 @@ namespace AlertService.Services.Impls
 				}
 				_lastScanPrice[sma.Symbol] = sma;
 				var stockData = await _dataProvider.GetLatestStockData(sma.Symbol);
+				var exchange = (await _dataProvider.GetLatestStockInfo(sma.Symbol)).ExchangeCode;
 
 				var alerts = new List<Alert>();
 
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, CupWithHandle(stockData, sma)));
+				var ret1 = GetAllCupWithHandle(stockData, sma);
+				addAlertIfNotNull(alerts, CreateAlert("CupWithHandle", sma.Symbol, ret1.message, exchange, ret1.cwhs));
 
 				Console.WriteLine("Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
-				await _alertHub.Clients.All.Alert(alerts);
+				if (alerts.Count > 0) {
+					await _alertHub.Clients.All.Alert(alerts);
+				}
 			}
 			catch (Exception e)
 			{
@@ -67,7 +71,7 @@ namespace AlertService.Services.Impls
 			}
 		}
 
-        public string CupWithHandle(Stock stockData, SMAGeneral sma, int range = 280)
+        public (string message, object cwhs) GetAllCupWithHandle(Stock stockData, SMAGeneral sma, int range = 280)
         {
 			var lastRange = getLastNTradingDay(stockData.HistoricalPrice, sma, range);
             var sma1 = Indicator.GetSMA(lastRange, 1);
@@ -82,8 +86,18 @@ namespace AlertService.Services.Impls
 				i = cwh.DipIndex;
 			}
 			
-			string message = cwhs.Count > 0 ? JsonSerializer.Serialize(cwhs) : null;
-			return message;
+			string message = cwhs.Count > 0 ? AlertMessageFormat.CupWithHandle : null;
+			return (message, cwhs);
+        }
+
+		public (string message, object cwhs) CupWithHandle(Stock stockData, SMAGeneral sma, int range = 280)
+        {
+			var lastRange = getLastNTradingDay(stockData.HistoricalPrice, sma, range);
+            var sma1 = Indicator.GetSMA(lastRange, 1);
+			var cwh = CandlePatterns.GetNearestCupWithHandle(sma1, sma1.Points.Count - 1);
+			
+			string message = cwh is null ? null : AlertMessageFormat.CupWithHandle;
+			return (message, cwh);
         }
 	}
 }

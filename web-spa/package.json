@@ -38,6 +38,7 @@
     "react-router-dom": "^4.3.1",
     "react-scripts": "^4.0.3",
     "react-signup-login-component": "^1.2.0",
+    "react-toastify": "^8.2.0",
     "sass": "^1.53.0",
     "save-svg-as-png": "^1.4.5",
     "socket.io-client": "^4.5.1",

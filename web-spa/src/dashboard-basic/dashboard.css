@@ -634,3 +634,15 @@ h1 {
 .alert-type-select-menu {
   min-width: 18rem;
 }
+
+/* alert notification
+*
+*/
+.alert-noti {
+  display: flex;
+  justify-content: space-between;
+}
+
+.alert-noti-symbol {
+  margin-right: 5px;
+}

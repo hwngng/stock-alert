@@ -76,15 +76,17 @@ namespace AlertService.Services.Impls
 				alerts.AddRange(added);
 		}
 
-		public Alert CreateAlert(string symbol, string message, string exchange = null)
+		public Alert CreateAlert(string type, string symbol, string message, string exchange = null, object description = null)
 		{
 			return string.IsNullOrEmpty(message) ?
 					null
 					: new Alert
 					{
+						Type = type,
 						Symbol = symbol,
 						Message = message,
 						Exchange = exchange,
+						Description = description,
 						PublishedAt = DateTime.UtcNow
 					};
 		}
