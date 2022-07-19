@@ -10,6 +10,8 @@ module.exports = {
   source: {
     type: 'file',
     uri: './resources/raw_data.txt'
+    // type: 'ws',
+    // uri: 'wss://price-api.vndirect.com.vn/realtime'
   },
   allowedRooms: ['MBB', 'FLC', 'VIC', 'SHB', 'VND'],
   infoVersion: '1654185264',
