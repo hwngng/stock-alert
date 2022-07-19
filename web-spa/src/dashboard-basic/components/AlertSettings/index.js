@@ -27,7 +27,7 @@ export default class AlertSettings extends Component {
             selectedAlertType: null,
             selectedSearchRangeIdx: 0,
             selectedVolumeRange: null,
-            edittingOption: null
+            edittingOption: {}
         };
 
         this.exchanges = this.config['exchanges'];
@@ -308,14 +308,28 @@ export default class AlertSettings extends Component {
     }
 
     async handleSaveAlertOption(event) {
-        const { selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange } = this.state;
+        const { selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange, watchlists } = this.state;
         let { alertOptions, edittingOption } = this.state;
         let searchRange = this.searchRangeOptions[selectedSearchRangeIdx];
         let option = {
             typeKey: selectedAlertType,
             exchange: searchRange['exchange'],
             watchlistId: searchRange['watchlistId'],
-            average5Volume: selectedVolumeRange
+            average5Volume: selectedVolumeRange,
+        }
+        if (option.watchlistId) {
+            let resp = await this.apiAuthRequest(userApi.watchlistDetail.path, {
+                method: userApi.watchlistDetail.method,
+                params: { id: option.watchlistId }
+            });
+            let watchlist = resp.data;
+            if (watchlist['symbolJson']) {
+                try {
+                    option['symbols'] = JSON.parse(watchlist['symbolJson']);
+                } catch (e) {
+                    console.log(resp);
+                }
+            }
         }
 
         let dup = alertOptions.find(o => {
@@ -334,7 +348,7 @@ export default class AlertSettings extends Component {
         if (dup) {
             alert('Đã tồn tại cảnh báo trên hệ thống!');
         } else {
-            if (edittingOption) {
+            if (edittingOption['typeKey']) {
                 option['id'] = edittingOption['id'];
                 let stdData = Helper.dropFalsyFields(option);
                 try {
@@ -346,7 +360,7 @@ export default class AlertSettings extends Component {
                     if (!resp || apiData != 1) {
                         alert('Thêm cảnh báo không thành công');
                     } else {
-                        this.hub?.invoke('UnsubscribeAlerts', [edittingOption]);
+                        this.hub?.invoke('UnsubscribeAlerts', [stdData]);
                         edittingOption['typeKey'] = option.typeKey;
                         edittingOption['exchange'] = option.exchange;
                         edittingOption['watchlistId'] = option.watchlistId;
@@ -431,10 +445,28 @@ export default class AlertSettings extends Component {
         this.handleOpenCreateModal(null, option);
     }
 
-    handleRemoveAlertOption(optionIdx) {
+    async handleRemoveAlertOption(optionIdx) {
         const { alertOptions } = this.state;
         const option = alertOptions[optionIdx];
-        this.hub.invoke('UnsubscribeAlerts', [option]);
+        try {
+            let resp = await this.apiAuthRequest(userApi.insertAlertOption.path, {
+                method: userApi.insertAlertOption.method,
+                data: stdData
+            });
+            let apiData = resp['data'];
+            if (!resp || apiData['status'] != 1) {
+                alert('Thêm cảnh báo không thành công');
+            } else {
+                option['id'] = apiData['id'];
+                if (!alertOptions)
+                    alertOptions = [];
+                alertOptions.push(option);
+                this.hub?.invoke('SubscribeAlerts', [stdData]);
+            }
+        } catch (e) {
+            console.log(e);
+        }
+        this.hub?.invoke('UnsubscribeAlerts', [option]);
         alertOptions.splice(optionIdx, 1);
         this.setState({ alertOptions });
     }

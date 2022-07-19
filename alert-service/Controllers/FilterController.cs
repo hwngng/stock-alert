@@ -46,7 +46,7 @@ namespace AlertService.Controllers
 							Low = decimal.Parse(x.low),
 							Close = decimal.Parse(x.close)
 						}).ToList();
-						var cwhs = _complexCandle.CupWithHandle(new Stock { HistoricalPrice = ohlcs }, null);
+						var cwhs = _complexCandle.GetAllCupWithHandle(new Stock { HistoricalPrice = ohlcs }, null);
 						return Ok(cwhs);
 					}
 				}
@@ -56,7 +56,7 @@ namespace AlertService.Controllers
 																		to.HasValue ? to : DateTime.UtcNow);
 					var stopwatch = new System.Diagnostics.Stopwatch();
 					stopwatch.Start();
-					var cwhs = _complexCandle.CupWithHandle(new Stock { HistoricalPrice = ohlcs }, null, 20000);
+					var cwhs = _complexCandle.GetAllCupWithHandle(new Stock { HistoricalPrice = ohlcs }, null, 20000);
 					stopwatch.Stop();
 					System.Console.WriteLine(stopwatch.ElapsedMilliseconds);
 					return Ok(cwhs);

@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AlertService.Services.Models;
 
 namespace AlertService.Services.Common
 {
@@ -24,6 +26,38 @@ namespace AlertService.Services.Common
 		public static decimal GetChangeRatio(decimal before, decimal current)
 		{
 			return (current - before) / before;
+		}
+
+		public static List<OHLCV> GetLastNTradingDay(List<OHLCV> ohlcs, SMAGeneral sma, int n)
+		{
+			if (n > ohlcs.Count)
+				n = ohlcs.Count;
+			var from = ohlcs.Count - n >= 0 ? ohlcs.Count - n : 0;
+			if (sma is null)
+			{
+				return ohlcs.GetRange(from, n);
+			}
+			var last = ohlcs[ohlcs.Count - 1];
+			OHLCV currentOhlc = null;
+			if (last.Date.Date == DateTime.UtcNow.Date)
+			{       // take open price
+				currentOhlc = last.CreateCopy();
+			}
+			else
+			{
+				currentOhlc = new OHLCV();
+				currentOhlc.Open = sma.MatchPrice.Value;
+			}
+			currentOhlc.Close = sma.MatchPrice.Value;
+			currentOhlc.High = sma.DayHigh.Value;
+			currentOhlc.Low = sma.DayLow.Value;
+			currentOhlc.Volume = sma.AccumulatedVol.Value;
+
+
+			var lastN = ohlcs.GetRange(from, n - 1);
+			lastN.Add(currentOhlc);
+
+			return lastN;
 		}
 	}
 
@@ -67,7 +101,8 @@ namespace AlertService.Services.Common
 	{
 		public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 		{
-			if (typeToConvert == typeof(DateTime)) {
+			if (typeToConvert == typeof(DateTime))
+			{
 				return DateTime.SpecifyKind(DateTime.Parse(reader.GetString() ?? string.Empty), DateTimeKind.Utc);
 			}
 			return JsonSerializer.Deserialize<DateTime>(ref reader, options);

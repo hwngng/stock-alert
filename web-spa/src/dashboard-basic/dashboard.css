@@ -364,7 +364,7 @@ h1 {
 
 .table-fix-head {
   overflow: auto;
-  height: calc(100vh - 165px);
+  height: calc(100vh - 180px);
 }
 
 .table-fix-head table {
@@ -645,4 +645,9 @@ h1 {
 
 .alert-noti-symbol {
   margin-right: 5px;
+  font-weight: bold;
+}
+
+.Toastify__toast-container {
+  z-index: 0;
 }

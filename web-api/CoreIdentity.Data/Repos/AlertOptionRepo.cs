@@ -18,37 +18,50 @@ namespace CoreIdentity.Data.Repos
 			_ctx = ctx;
 		}
 
-		public async Task<IEnumerable<AlertOption>> GetByUserId(long userId)
+		public async Task<IEnumerable<AlertOptionViewModel>> GetByUserId(long userId)
 		{
+
 			var query = _ctx.AlertOptions.Where(x => x.UserLocalId == userId)
-										.Select(x => new AlertOption
+										.GroupJoin(_ctx.Watchlists,
+												alertOption => alertOption.WatchlistId,
+												watchlist => watchlist.Id,
+												(alertOption, watchlist) => new { AlertOption = alertOption, Watchlists = watchlist })
+										.SelectMany(x => x.Watchlists.DefaultIfEmpty(),
+													(x, y) => new { AlertOption = x.AlertOption, Watchlist = y })
+										.Select(x => new AlertOptionViewModel
 										{
-											Id = x.Id,
-											UserLocalId = x.UserLocalId,
-											TypeKey = x.TypeKey,
-											ParametersJson = x.ParametersJson,
-											Exchange = x.Exchange,
-											SymbolListJson = x.SymbolListJson,
-											WatchlistId = x.WatchlistId,
-											Average5Volume = x.Average5Volume
+											Id = x.AlertOption.Id,
+											UserLocalId = x.AlertOption.UserLocalId,
+											TypeKey = x.AlertOption.TypeKey,
+											ParametersJson = x.AlertOption.ParametersJson,
+											Exchange = x.AlertOption.Exchange,
+											WatchlistId = x.AlertOption.WatchlistId,
+											Average5Volume = x.AlertOption.Average5Volume,
+											SymbolsJson = x.Watchlist == null ? null : x.Watchlist.SymbolJson
 										})
 										.OrderBy(x => x.Id);
 			return await query.ToListAsync();
 		}
 
-		public async Task<AlertOption> GetDetailById(long userId, long id)
+		public async Task<AlertOptionViewModel> GetDetailById(long userId, long id)
 		{
 			var query = _ctx.AlertOptions.Where(x => x.Id == id && x.UserLocalId == userId)
-										.Select(x => new AlertOption
+										.GroupJoin(_ctx.Watchlists,
+												alertOption => alertOption.WatchlistId,
+												watchlist => watchlist.Id,
+												(alertOption, watchlist) => new { AlertOption = alertOption, Watchlists = watchlist })
+										.SelectMany(x => x.Watchlists.DefaultIfEmpty(),
+													(x, y) => new { AlertOption = x.AlertOption, Watchlist = y })
+										.Select(x => new AlertOptionViewModel
 										{
-											Id = x.Id,
-											UserLocalId = x.UserLocalId,
-											TypeKey = x.TypeKey,
-											ParametersJson = x.ParametersJson,
-											Exchange = x.Exchange,
-											SymbolListJson = x.SymbolListJson,
-											WatchlistId = x.WatchlistId,
-											Average5Volume = x.Average5Volume
+											Id = x.AlertOption.Id,
+											UserLocalId = x.AlertOption.UserLocalId,
+											TypeKey = x.AlertOption.TypeKey,
+											ParametersJson = x.AlertOption.ParametersJson,
+											Exchange = x.AlertOption.Exchange,
+											WatchlistId = x.AlertOption.WatchlistId,
+											Average5Volume = x.AlertOption.Average5Volume,
+											SymbolsJson = x.Watchlist.SymbolJson
 										});
 			return await query.FirstOrDefaultAsync();
 		}
@@ -63,7 +76,7 @@ namespace CoreIdentity.Data.Repos
 				Exchange = alertOptionViewModel.Exchange,
 				SymbolListJson = alertOptionViewModel.Symbols is null ? null : JsonSerializer.Serialize(alertOptionViewModel.Symbols),
 				WatchlistId = alertOptionViewModel.WatchlistId,
-				Average5Volume = alertOptionViewModel.Average5Volumne
+				Average5Volume = alertOptionViewModel.Average5Volume
 			};
 			var alertOptionCreated = _ctx.AlertOptions.Add(alertOption);
 			var status = await _ctx.SaveChangesAsync();
@@ -94,16 +107,16 @@ namespace CoreIdentity.Data.Repos
 				args.Add(alertOptionViewModel.Exchange);
 				comma = ",";
 			}
-			if (alertOptionViewModel.Average5Volumne.HasValue)
+			if (alertOptionViewModel.Average5Volume.HasValue)
 			{
-				setStm += $"{comma}\"Average5Volumne\" = {{{argCount++}}}";
-				args.Add(alertOptionViewModel.Average5Volumne);
+				setStm += $"{comma}\"Average5Volume\" = {{{argCount++}}}";
+				args.Add(alertOptionViewModel.Average5Volume);
 				comma = ",";
 			}
 			if (alertOptionViewModel.WatchlistId.HasValue)
 			{
 				setStm += $"{comma}\"WatchlistId\" = {{{argCount++}}}";
-				args.Add(alertOptionViewModel.Average5Volumne);
+				args.Add(alertOptionViewModel.Average5Volume);
 				comma = ",";
 			}
 			if (!(alertOptionViewModel.Parameters is null))

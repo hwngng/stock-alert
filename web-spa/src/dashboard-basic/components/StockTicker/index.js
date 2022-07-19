@@ -307,7 +307,7 @@ export default class StockTicker extends Component {
             let response = await this.apiAuthRequest(userApi.watchlistDetail.path, {
                 method: userApi.watchlistDetail.method,
                 params: { id: id }
-            })
+            });
             detail = response.data;
             detail['symbols'] = [];
             if (detail['symbolJson']) {
@@ -784,6 +784,8 @@ export default class StockTicker extends Component {
         const { activeTabKey, activeDropdownKey } = this.state;
         let { stockObjs } = this.state;
         if (activeTabKey != 'watchlist') return;
+        let symbolWatchlist = this.filter.codes.find(s => s == symbol);
+        if (symbolWatchlist) return;
         let symbolDetail = this.stockInfos?.find(si => si.symbol === symbol);
         if (symbolDetail) {
             let symbolObj = { symbol: symbolDetail['symbol'], exchangeCode: symbolDetail['exchange_code'] };

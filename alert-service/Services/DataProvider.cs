@@ -45,6 +45,7 @@ namespace AlertService.Services
 			_stockDataReadMutex = new Dictionary<string, Mutex>();
 			_stockInfo = new Dictionary<string, StockInfo>();
 			_ws = ws;
+			_lastSyncStockInfo = DateTime.MinValue;
 		}
 
 		public async Task<List<SFUGeneral>> GetMultiSnapshot(List<string> codes)
@@ -114,6 +115,7 @@ namespace AlertService.Services
 								?.GroupBy(x => x.Symbol)
 								?.ToDictionary(g => g.Key, g => g.Select(x => new StockInfo
 								{
+									Symbol = x.Symbol,
 									ExchangeCode = x.ExchangeCode
 								}).FirstOrDefault());
 			}
@@ -348,11 +350,13 @@ namespace AlertService.Services
 			// today is trading day but before atc, then lasted data is previous trading day
 			if (isBeforeUpdateDataTime(now))
 			{
-				if (now.Date == lastSync.Date 
-					||now.AddDays(-1).Date == lastSync.Date)
+				if (now.Date == lastSync.Date
+					|| now.AddDays(-1).Date == lastSync.Date)
 					return true;
-				
-			} else {
+
+			}
+			else
+			{
 				if (now.Date == lastSync.Date
 					&& !isBeforeUpdateDataTime(lastSync))
 					return true;
@@ -379,11 +383,7 @@ namespace AlertService.Services
 				}
 				while (isLocked && lockRetry <= 3);
 
-				if (_stockInfo.ContainsKey(code) && isSyncedStockInfo(_lastSyncStockInfo))
-				{
-					return _stockInfo[code];
-				}
-				else
+				if (!_stockInfo.ContainsKey(code) || !isSyncedStockInfo(_lastSyncStockInfo))
 				{
 					_cache.SetString(lockKey, "1");
 					var newStockInfo = await GetStockInfoFromDataService();
@@ -394,8 +394,49 @@ namespace AlertService.Services
 					_stockInfo = newStockInfo;
 					_lastSyncStockInfo = DateTime.UtcNow;
 					_cache.Remove(lockKey);
-					return _stockInfo[code];
 				}
+
+				return _stockInfo[code];
+			}
+			catch (Exception e)
+			{
+				_logger.LogError(e, "Cannot get stock info");
+				throw e;
+			}
+		}
+
+		public async Task<List<StockInfo>> GetLatestStockInfoByExchange(List<string> exchanges)
+		{
+			try
+			{
+				var lockKey = string.Format(CacheKey.LockGetStockInfo);
+				var isLocked = false;
+				var lockRetry = 0;
+				do
+				{
+					isLocked = _cache.GetString(lockKey) == "1";
+					if (isLocked)
+					{
+						await Task.Delay(1000);
+					}
+					lockRetry++;
+				}
+				while (isLocked && lockRetry <= 3);
+
+				if (!isSyncedStockInfo(_lastSyncStockInfo))
+				{
+					_cache.SetString(lockKey, "1");
+					var newStockInfo = await GetStockInfoFromDataService();
+					if (newStockInfo is null)
+					{
+						throw new Exception("Cannot get stock info");
+					}
+					_stockInfo = newStockInfo;
+					_lastSyncStockInfo = DateTime.UtcNow;
+					_cache.Remove(lockKey);
+				}
+				var ret = _stockInfo.Values.Where(x => exchanges.Contains(x.ExchangeCode)).ToList();
+				return ret;
 			}
 			catch (Exception e)
 			{

@@ -1,5 +1,4 @@
-import axios from 'axios';
-import React, { PureComponent } from 'react';
+import React, { Component } from 'react';
 import { HubConnectionBuilder, } from '@microsoft/signalr';
 import { NotificationContainer, NotificationManager } from 'react-notifications';
 import 'react-notifications/lib/notifications.css';
@@ -13,7 +12,7 @@ import { timeFormat } from 'd3-time-format';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-export default class StockAlert extends PureComponent {
+export default class StockAlert extends Component {
 
     constructor(props) {
         super(props);
@@ -49,14 +48,19 @@ export default class StockAlert extends PureComponent {
             }
         );
 
-        connection.on("Alert", (message) => {
-            console.log(message);
-            let { alerts } = that.state;
-            alerts = alerts.concat(message);
+        connection.onreconnected(() => {
+            const { alertOptions } = this.state;
+            this.hub?.invoke('SubscribeAlerts', alertOptions);
+        });
+
+        connection.on("Alert", (alert) => {
+            console.log(alert);
+            const { alerts, isShowSetting } = that.state;
+            alerts.push(alert);
+
+            that.showNotis(alert);
 
             that.setState({ alerts });
-
-            that.showNotis(message);
         });
 
         try {
@@ -101,6 +105,15 @@ export default class StockAlert extends PureComponent {
                     console.log(response);
                     return;
                 }
+                alertOptionObj.forEach(alertOption => {
+                    if (!alertOption['symbolsJson'])
+                        return;
+                    try {
+                        alertOption['symbols'] = JSON.parse(alertOption['symbolsJson']);
+                    } catch (e) {
+                        console.log(alertOption);
+                    }
+                })
                 this.hub?.invoke('SubscribeAlerts', alertOptionObj);
                 that.setState({ alertOptions: alertOptionObj });
             })
@@ -114,23 +127,15 @@ export default class StockAlert extends PureComponent {
         this.loadAlertOption();
     }
 
-    showNotis(alerts) {
-        const that = this;
-        let delayTime = 0;
-        let delayInterval = 1000;
-        alerts.forEach(alert => {
-            setTimeout(() => {
-                let noti = (
-                    <div className="alert-noti">
-                        <div className="alert-noti-symbol">{alert['symbol']}</div>
-                        <div>{alert['message']}</div>
-                        <div>{that.alertTimeFormat(new Date(alert['publishedAt']))}</div>
-                    </div>
-                );
-                toast(noti);
-            }, delayTime);
-            delayTime += delayInterval;
-        });
+    showNotis(alert) {
+        let noti = (
+            <div className="alert-noti">
+                <div className="alert-noti-symbol">{alert['symbol']}</div>
+                <div>{alert['message']}</div>
+                <div>{this.alertTimeFormat(new Date(alert['publishedAt']))}</div>
+            </div>
+        );
+        toast(noti);
     }
 
     handleOpenModal() {
@@ -171,7 +176,7 @@ export default class StockAlert extends PureComponent {
                     position="bottom-right"
                     autoClose={5000}
                     hideProgressBar
-                    newestOnTop={false}
+                    newestOnTop={true}
                     closeOnClick
                     rtl={false}
                     pauseOnFocusLoss
