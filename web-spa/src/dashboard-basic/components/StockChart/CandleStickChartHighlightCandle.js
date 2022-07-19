@@ -65,7 +65,7 @@ const candleAppearance = {
 const dateFormat = timeFormat("%Y-%m-%d");
 const numberFormat = format(".2f");
 
-class CandleStickChartHighlightCandle extends React.Component {
+class CandleStickChartHighlightCandle extends React.PureComponent {
 	constructor(props) {
 		super(props);
 
@@ -91,6 +91,8 @@ class CandleStickChartHighlightCandle extends React.Component {
 		};
 		this.focusCandle = null;
 		this.patternCount = {};
+		this.forceReset = false;
+		this.renderCount = 0;
 	}
 
 	zoomOnClickAnnotation(datum) {
@@ -120,6 +122,7 @@ class CandleStickChartHighlightCandle extends React.Component {
 		this.node.resetYDomain();
 	}
 	handleReset() {
+		this.forceReset = true;
 		this.setState({
 			suffix: this.state.suffix + 1
 		});
@@ -218,33 +221,48 @@ class CandleStickChartHighlightCandle extends React.Component {
 			xAccessor,
 			displayXAccessor,
 		} = xScaleProvider(initialData);
-		let start = xAccessor(last(data)) + 1.5;
-		let end = xAccessor(data[Math.max(0, data.length - 125)]);
-		if (focusPattern && focusPattern.length > 0) {
-			let newStart = xAccessor(data.find(x => x.date == focusPattern[0].date)) + 62;
-			let newEnd = newStart - 125;
-			if (newStart <= start) {
-				start = newStart;
-				end = newEnd >= 0 ? newEnd : 0;
+		let defaultStart = xAccessor(last(data)) + 1.5;
+		let defaultEnd = xAccessor(data[Math.max(0, data.length - 125)]);
+		let start = defaultStart;
+		let end = defaultEnd;
+		if (!this.forceReset) {
+			if (focusPattern && focusPattern.length > 0) {
+				let med = Helper.getMedium(focusPattern, 0, focusPattern.length - 2);
+				let range = (focusPattern.length-1) < 125 ? 125 : focusPattern.length + 20;
+				
+				let newStart = xAccessor(data.find(x => x.date == med.date)) + range/2;
+				let newEnd = newStart - range;
+				if (newStart <= defaultStart) {
+					start = newStart;
+					end = newEnd >= 0 ? newEnd : 0;
+				}
+			}
+			if (this.xExtentsZoom) {
+				if (this.xExtentsZoom[0] <= defaultStart) {
+					start = this.xExtentsZoom[0];
+					end = this.xExtentsZoom[1];
+				} else {
+					start = defaultStart;
+					end = defaultEnd;
+				}
+				this.xExtentsZoom = null;
+			}
+			if (this.focusCandle) {
+				let newStart = xAccessor(data.find(x => x.date == this.focusCandle.date)) + 62;
+				let newEnd = newStart - 125;
+				if (newStart <= defaultStart) {
+					start = newStart;
+					end = newEnd >= 0 ? newEnd : 0;
+				} else {
+					start = defaultStart;
+					end = defaultEnd;
+				}
+				this.focusCandle = null;
 			}
 		}
-		if (this.xExtentsZoom) {
-			if (this.xExtentsZoom[0] <= start) {
-				xExtents = this.xExtentsZoom;
-			}
-			this.xExtentsZoom = null;
-		}
-		if (this.focusCandle) {
-			let newStart = xAccessor(data.find(x => x.date == this.focusCandle.date)) + 62;
-			let newEnd = newStart - 125;
-			if (newStart <= start) {
-				start = newStart;
-				end = newEnd >= 0 ? newEnd : 0;
-			}
-			this.focusCandle = null;
-		}
+		this.forceReset = false;
 		let xExtents = [start, end];
-
+		console.log(++this.renderCount);
 		if (highlightPatterns && highlightPatterns.length > 0) {
 			this.patternCount = {};
 			highlightPatterns.forEach(pattern => {
@@ -341,14 +359,14 @@ class CandleStickChartHighlightCandle extends React.Component {
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(0, 4).map(options => ({
-							yAccessor: () => this.patternCount[options],
+							yAccessor: () => this.patternCount[options] ?? '0',
 							yLabel: patternMap[options]?.titleEn,
 							valueFill: patternMap[options]?.stroke,
 							withShape: true,
 							width: 100,
 							tooltipKey: options,
 						}))}
-						displayFormat={n => Math.round(n)}
+						displayFormat={n => Math.round(n)?.toString() ?? '0'}
 					/>
 					<GroupTooltip
 						layout="vertical"
@@ -356,13 +374,13 @@ class CandleStickChartHighlightCandle extends React.Component {
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(4, 8).map(options => ({
-							yAccessor: () => this.patternCount[options],
+							yAccessor: () => this.patternCount[options] ?? '0',
 							yLabel: patternMap[options]?.titleEn,
 							valueFill: patternMap[options]?.stroke,
 							withShape: true,
 							width: 100,
 						}))}
-						displayFormat={n => Math.round(n)}
+						displayFormat={n => Math.round(n)?.toString() ?? '0'}
 					/>
 					<GroupTooltip
 						layout="vertical"
@@ -370,13 +388,13 @@ class CandleStickChartHighlightCandle extends React.Component {
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(8, 12).map(options => ({
-							yAccessor: () => this.patternCount[options],
+							yAccessor: () => this.patternCount[options] ?? '0',
 							yLabel: patternMap[options]?.titleEn,
 							valueFill: patternMap[options]?.stroke,
 							withShape: true,
 							width: 100,
 						}))}
-						displayFormat={n => Math.round(n)}
+						displayFormat={n => Math.round(n)?.toString() ?? '0'}
 					/>
 					{/* <Annotate
 						with={LabelAnnotation}

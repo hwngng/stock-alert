@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using AlertService.Models;
 using AlertService.Services.Models;
 
 namespace AlertService.Services.Hubs
@@ -9,6 +10,8 @@ namespace AlertService.Services.Hubs
     {
         Task ShowTime(DateTime currentTime);
         Task Alert(Alert alert);
-        Task Alert(List<Alert> alerts);
+        // Task Alerts(List<Alert> alerts);
+        Task SubscribeAlerts(List<AlertOption> alertOptions);
+        Task UnsubscribeAlert(List<AlertOption> alertOption);
     }
 }

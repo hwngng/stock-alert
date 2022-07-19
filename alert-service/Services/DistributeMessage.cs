@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using AlertService.Services.Interfaces;
 using AlertService.Services.Models;
@@ -29,10 +28,9 @@ namespace AlertService.Services
                 Message = message,
                 Timestamp = _messageCount += 1
             };
-			var tasks = _messageHandlers.Select(async handler => {
-				await handler.ProcessMessage(socketMsg);
-			});
-			await Task.WhenAll(tasks);
+			foreach(var messageHandler in _messageHandlers) {
+				await Task.Run(() => messageHandler.ProcessMessage(socketMsg));
+			}
 		}
 	}
 }

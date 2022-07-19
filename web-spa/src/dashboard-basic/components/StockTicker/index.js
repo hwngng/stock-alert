@@ -11,6 +11,7 @@ import WebAPIAuth from '../../../common/request/WebAPIAuth';
 import DataService from '../../../common/request/DataService';
 import StockChart from '../StockChart';
 import latinize from 'latinize';
+import Helper from '../../../common/helper';
 
 export default class StockTicker extends Component {
     constructor(props) {
@@ -306,7 +307,7 @@ export default class StockTicker extends Component {
             let response = await this.apiAuthRequest(userApi.watchlistDetail.path, {
                 method: userApi.watchlistDetail.method,
                 params: { id: id }
-            })
+            });
             detail = response.data;
             detail['symbols'] = [];
             if (detail['symbolJson']) {
@@ -370,17 +371,6 @@ export default class StockTicker extends Component {
             });
     }
 
-    dropNullFields(obj) {
-        let newObj = {};
-        for (const key in obj) {
-            if (obj[key]) {
-                newObj[key] = obj[key];
-            }
-        }
-
-        return newObj;
-    }
-
     standardizeStockObj(stockObjs) {
         let stdStockObjs = stockObjs.filter(s => (typeof s === 'object' && s !== null) && Object.keys(s).length > 0);
         stdStockObjs.map(s => {
@@ -402,7 +392,7 @@ export default class StockTicker extends Component {
 
     async loadSnapshot() {
         const that = this;
-        let stdParams = this.dropNullFields(this.filter);
+        let stdParams = Helper.dropFalsyFields(this.filter);
         try {
             let response = await this.dataSvcRequest(dataServiceApi.snapshot.path, {
                 method: dataServiceApi.snapshot.method,
@@ -794,6 +784,8 @@ export default class StockTicker extends Component {
         const { activeTabKey, activeDropdownKey } = this.state;
         let { stockObjs } = this.state;
         if (activeTabKey != 'watchlist') return;
+        let symbolWatchlist = this.filter.codes.find(s => s == symbol);
+        if (symbolWatchlist) return;
         let symbolDetail = this.stockInfos?.find(si => si.symbol === symbol);
         if (symbolDetail) {
             let symbolObj = { symbol: symbolDetail['symbol'], exchangeCode: symbolDetail['exchange_code'] };
@@ -815,7 +807,7 @@ export default class StockTicker extends Component {
                     codes: [symbolObj.symbol],
                     exchangeCodes: [symbolObj.exchangeCode]
                 };
-                let stdParams = this.dropNullFields(this.filter);
+                let stdParams = Helper.dropFalsyFields(this.filter);
                 response = await this.dataSvcRequest(dataServiceApi.snapshot.path, {
                     method: dataServiceApi.snapshot.method,
                     params: stdParams,

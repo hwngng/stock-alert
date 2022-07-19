@@ -110,7 +110,7 @@ namespace AlertService.Services
 					var msg = Encoding.ASCII.GetString(bytesReceived.Array, 0, result.Count);
 					if (msg == Constants.PING)
 					{
-						_webSocket.SendAsync(Constants.PONG, WebSocketMessageType.Text, true, CancellationToken.None);
+						await Task.Run(() => _webSocket.SendAsync(Constants.PONG, WebSocketMessageType.Text, true, CancellationToken.None));
 						continue;
 					}
 					var sockData = GetSocketData(msg);

@@ -61,6 +61,24 @@ const Helper = {
 		}
 
 		return arrNoAdj;
+	},
+    dropFalsyFields(obj) {
+        let newObj = {};
+        for (const key in obj) {
+            if (obj[key]) {
+                newObj[key] = obj[key];
+            }
+        }
+
+        return newObj;
+    },
+	isEqual(arg1, arg2) {
+		if (!arg1 && !arg2)
+			return true;
+		return arg1 == arg2;
+	},
+	sleep(ms) {
+		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 }
 

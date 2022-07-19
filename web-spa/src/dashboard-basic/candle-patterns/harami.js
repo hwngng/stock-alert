@@ -36,8 +36,8 @@ export function bullishHarami(dataSeries) {
 export function bearishHarami(dataSeries) {
 	const resultPatterns = [];
 	const isBearishHaramiCandles = function(tradingDay1, tradingDay2) {
-		if (common.getSign(tradingDay1) >= 0) return false;
-		if (common.getSign(tradingDay2) < 0) return false;
+		if (common.getSign(tradingDay1) <= 0) return false;
+		if (common.getSign(tradingDay2) > 0) return false;
 		let upper1 = common.getUpperBody(tradingDay1);
 		let lower1 = common.getLowerBody(tradingDay1);
 		let upper2 = common.getUpperBody(tradingDay2);

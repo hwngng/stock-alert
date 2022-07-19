@@ -13,7 +13,7 @@ export function piercing(dataSeries) {
 		let body2 = upper2 - lower2;
 		let minBody = common.getLargeBodyPercent()*0.6;
 		if (((lower1 > 0 && body1/lower1 >= minBody)
-				|| (lower2 > 0 && body2/lower1 >= minBody))
+				|| (lower2 > 0 && body2/lower2 >= minBody))
 			&& lower1 - lower2 >= 0.15*body2
 			&& upper2 > (upper1 + lower1)/2
 			&& upper2 < lower1 + 0.8*body1

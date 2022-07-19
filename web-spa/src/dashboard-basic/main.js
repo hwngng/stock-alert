@@ -11,7 +11,7 @@ import { render } from 'react-dom';
 const Main = (props) => (
   <main role="main" className="col-md-12 mx-1">
     <Route path="/stock-ticker" render={() => <StockTicker apiUrl="http://localhost:3000/realtime" />} />
-    <Route exact path="/alert-settings" render={() => <AlertSettings />} />
+    <Route exact path="/alert-settings" render={() => <AlertSettings config={props.config}/>} />
     <Route path="/stock-chart" render={() => <StockChart config={props.config} />} />
     <Route path="/login" render={() => <Login config={props.config} />} />
     <Route path="/signup" render={() => <SignUp config={props.config} />} />

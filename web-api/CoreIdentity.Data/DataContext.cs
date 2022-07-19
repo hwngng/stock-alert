@@ -12,5 +12,7 @@ namespace CoreIdentity.Data
 		public DbSet<spGetOneExample> spGetOneExample { get; set; }
 		public DbSet<spGetManyExamples> spGetManyExamples { get; set; }
 		public DbSet<Watchlist> Watchlists { get; set; }
+		public DbSet<AlertType> AlertTypes { get; set; }
+		public DbSet<AlertOption> AlertOptions { get; set; }
 	}
 }

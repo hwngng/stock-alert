@@ -19,12 +19,24 @@ namespace AlertService.Services.Impls
 		public BasicCandle(IConfiguration config,
 							ILogger<DataProvider> logger,
 							IDataProvider dataProvider,
-							IHubContext<AlertHub, IAlert> alertHub) : base(config, logger, dataProvider, alertHub)
+							AlertPublisher alertPublisher) : base(config, logger, dataProvider, alertPublisher)
 		{
 			_parseOptions = new JsonSerializerOptions
 			{
 				Converters = { new NullableConverterFactory() },
 				NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
+			};
+			_selfManageType = new List<string>
+			{
+				AlertTypeConstant.Test,
+				AlertTypeConstant.BullishEngulfing,
+				AlertTypeConstant.BearishEngulfing,
+				AlertTypeConstant.ThreeBlackCrows,
+				AlertTypeConstant.ThreeWhiteSoldiers,
+				AlertTypeConstant.Hammer,
+				AlertTypeConstant.InvertedHammer,
+				AlertTypeConstant.EveningStar,
+				AlertTypeConstant.MorningStar
 			};
 		}
 
@@ -44,7 +56,7 @@ namespace AlertService.Services.Impls
 				if (_lastScanPrice.ContainsKey(sma.Symbol))
 				{
 					var change = Utils.GetChangeRatio(_lastScanPrice[sma.Symbol].MatchPrice.Value, sma.MatchPrice.Value);
-					Console.WriteLine(string.Format("Symbol: {3}. Ratio change: {0}. Last value: {1}. Current value: {2}", change, _lastScanPrice[sma.Symbol].MatchPrice.Value, sma.MatchPrice.Value, sma.Symbol));
+					// Console.WriteLine(string.Format("Symbol: {3}. Ratio change: {0}. Last value: {1}. Current value: {2}", change, _lastScanPrice[sma.Symbol].MatchPrice.Value, sma.MatchPrice.Value, sma.Symbol));
 					if (Math.Abs(change) < _config.GetValue<decimal>("ScanRatio"))
 					{
 						return;
@@ -52,21 +64,25 @@ namespace AlertService.Services.Impls
 				}
 				_lastScanPrice[sma.Symbol] = sma;
 				var stockData = await _dataProvider.GetLatestStockData(sma.Symbol);
+				var exchange = (await _dataProvider.GetLatestStockInfo(sma.Symbol)).ExchangeCode;
 
 				var alerts = new List<Alert>();
 
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, Test(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, BullishEngulfing(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, BearishEngulfing(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, ThreeBlackCrows(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, ThreeWhiteSoldiers(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, Hammer(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, InvertedHammer(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, EveningStar(stockData, sma)));
-				addAlertIfNotNull(alerts, CreateAlert(sma.Symbol, MorningStar(stockData, sma)));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.Test, sma.Symbol, Test(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.BullishEngulfing, sma.Symbol, BullishEngulfing(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.BearishEngulfing, sma.Symbol, BearishEngulfing(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.ThreeBlackCrows, sma.Symbol, ThreeBlackCrows(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.ThreeWhiteSoldiers, sma.Symbol, ThreeWhiteSoldiers(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.Hammer, sma.Symbol, Hammer(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.InvertedHammer, sma.Symbol, InvertedHammer(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.EveningStar, sma.Symbol, EveningStar(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.MorningStar, sma.Symbol, MorningStar(stockData, sma), exchange));
 
 				Console.WriteLine("Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
-				await _alertHub.Clients.All.Alert(alerts);
+				if (alerts.Count > 0)
+				{
+					await _alertPublisher.SendAlerts(alerts);
+				}
 			}
 			catch (Exception e)
 			{
@@ -74,14 +90,14 @@ namespace AlertService.Services.Impls
 			}
 		}
 
-		public string Test(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string Test(Stock stockData, SMAGeneral sma)
 		{
-			return JsonSerializer.Serialize(stockData.HistoricalPrice.Last()) + " " + JsonSerializer.Serialize(sma);
+			return AlertMessageFormat.Test;
 		}
 
-		public string BearishEngulfing(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string BearishEngulfing(Stock stockData, SMAGeneral sma)
 		{
-			var last2 = getLastNTradingDay(stockData.HistoricalPrice, sma, 2);
+			var last2 = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, 2);
 			if (last2 is null || last2.Count != 2)
 				return null;
 			if (!CandlePatterns.IsBearishEngulfingCandles(last2[0], last2[1]))
@@ -90,80 +106,80 @@ namespace AlertService.Services.Impls
 			return AlertMessageFormat.BearishEngulfing;
 		}
 
-		public string BullishEngulfing(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string BullishEngulfing(Stock stockData, SMAGeneral sma)
 		{
-			var last2 = getLastNTradingDay(stockData.HistoricalPrice, sma, 2);
+			var last2 = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, 2);
 			if (last2 is null || last2.Count != 2)
 				return null;
 			if (!CandlePatterns.IsBullishEngulfingCandles(last2[0], last2[1]))
 				return null;
-			
+
 			return AlertMessageFormat.BullishEngulfing;
 		}
 
-		public string Hammer(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string Hammer(Stock stockData, SMAGeneral sma)
 		{
-			var last1 = getLastNTradingDay(stockData.HistoricalPrice, sma, 1);
+			var last1 = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, 1);
 			if (last1 is null || last1.Count != 1)
 				return null;
 			if (!CandlePatterns.IsHammerCandle(last1[0]))
 				return null;
-			
+
 			return AlertMessageFormat.Hammer;
 		}
 
-		public string InvertedHammer(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string InvertedHammer(Stock stockData, SMAGeneral sma)
 		{
-			var last1 = getLastNTradingDay(stockData.HistoricalPrice, sma, 1);
+			var last1 = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, 1);
 			if (last1 is null || last1.Count != 1)
 				return null;
 			if (!CandlePatterns.IsInvertedHammerCandle(last1[0]))
 				return null;
-			
+
 			return AlertMessageFormat.InvertedHammer;
 		}
 
-		public string MorningStar(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string MorningStar(Stock stockData, SMAGeneral sma)
 		{
-			var last3 = getLastNTradingDay(stockData.HistoricalPrice, sma, 3);
+			var last3 = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, 3);
 			if (last3 is null || last3.Count != 3)
 				return null;
 			if (!CandlePatterns.IsMorningStarCandles(last3[0], last3[1], last3[2]))
 				return null;
-			
+
 			return AlertMessageFormat.MorningStar;
 		}
 
-		public string EveningStar(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string EveningStar(Stock stockData, SMAGeneral sma)
 		{
-			var last3 = getLastNTradingDay(stockData.HistoricalPrice, sma, 3);
+			var last3 = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, 3);
 			if (last3 is null || last3.Count != 3)
 				return null;
 			if (!CandlePatterns.IsEveningStarCandles(last3[0], last3[1], last3[2]))
 				return null;
-			
+
 			return AlertMessageFormat.EveningStar;
 		}
 
-		public string ThreeWhiteSoldiers(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string ThreeWhiteSoldiers(Stock stockData, SMAGeneral sma)
 		{
-			var last3 = getLastNTradingDay(stockData.HistoricalPrice, sma, 3);
+			var last3 = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, 3);
 			if (last3 is null || last3.Count != 3)
 				return null;
 			if (!CandlePatterns.IsThreeWhiteSoldiersCandles(last3[0], last3[1], last3[2]))
 				return null;
-			
+
 			return AlertMessageFormat.ThreeWhiteSoldiers;
 		}
 
-		public string ThreeBlackCrows(Stock stockData, SMAGeneral sma, string symbol = "")
+		public string ThreeBlackCrows(Stock stockData, SMAGeneral sma)
 		{
-			var last3 = getLastNTradingDay(stockData.HistoricalPrice, sma, 3);
+			var last3 = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, 3);
 			if (last3 is null || last3.Count != 3)
 				return null;
 			if (!CandlePatterns.IsThreeBlackCrowsCandles(last3[0], last3[1], last3[2]))
 				return null;
-			
+
 			return AlertMessageFormat.ThreeBlackCrows;
 		}
 	}

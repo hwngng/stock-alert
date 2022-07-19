@@ -133,6 +133,7 @@ export default class StockChart extends Component {
         const { highlightOptions } = this.state;
         if (highlightOptions[highlightOptions.length - 1] != '')
             highlightOptions.push('');
+
         this.setState({ highlightOptions });
     }
 

@@ -9,16 +9,25 @@ import { piercing } from '../dashboard-basic/candle-patterns/piercing';
 import { whiteMarubozu, blackMarubozu } from '../dashboard-basic/candle-patterns/marubozu';
 import { threeInsideUp, threeInsideDown } from '../dashboard-basic/candle-patterns/threeInside';
 import { bullishHarami, bearishHarami } from '../dashboard-basic/candle-patterns/harami';
+import { tweezerBottom, tweezerTop } from '../dashboard-basic/candle-patterns/tweezer';
+import { threeOutsideDown, threeOutsideUp } from '../dashboard-basic/candle-patterns/threeOutside';
+import { onNeck } from '../dashboard-basic/candle-patterns/onNeck';
+import { bearishCounterAttack, bullishCounterAttack } from '../dashboard-basic/candle-patterns/counterattack';
+import { cupWithHandle } from '../dashboard-basic/candle-patterns/cupWithHandle';
+import { darkCloudCover } from '../dashboard-basic/candle-patterns/darkCloudCover';
+import { doji, dragonflyDoji, gravestoneDoji, longLeggedDoji } from '../dashboard-basic/candle-patterns/doji';
+import { spinningTop } from '../dashboard-basic/candle-patterns/spinningTop';
+import { fallingThreeMethods, risingThreeMethods } from '../dashboard-basic/candle-patterns/threeMethods';
 
 const patternMap = {
 	hammerCandle: {
-		titleEn: 'Hammer',
+		titleEn: 'Hammer / Hanging Man',
 		titleVi: '',
 		stroke: '#ffc0cb',
 		fn: hammerCandle
 	},
 	invertedHammerCandle: {
-		titleEn: 'Inverted Hammer',
+		titleEn: 'Inverted Hammer / Shooting Star',
 		titleVi: '',
 		stroke: '#ff69b4',
 		fn: invertedHammerCandle
@@ -100,6 +109,102 @@ const patternMap = {
 		titleVi: '',
 		stroke: '#ff6347',
 		fn: bearishHarami
+	},
+	tweezerTop: {
+		titleEn: 'Tweezer Top',
+		titleVi: '',
+		stroke: '#adff2f',
+		fn: tweezerTop
+	},
+	tweezerBottom: {
+		titleEn: 'Tweezer Bottom',
+		titleVi: '',
+		stroke: '#a020f0',
+		fn: tweezerBottom
+	},
+	threeOutsideUp: {
+		titleEn: 'Three Outside Up',
+		titleVi: '',
+		stroke: '#0000ff',
+		fn: threeOutsideUp
+	},
+	threeOutsideDown: {
+		titleEn: 'Three Outside Down',
+		titleVi: '',
+		stroke: '#f4a460',
+		fn: threeOutsideDown
+	},
+	onNeck: {
+		titleEn: 'On Neck',
+		titleVi: '',
+		stroke: '#00bfff',
+		fn: onNeck
+	},
+	bullishCounterAttack: {
+		titleEn: 'Bullish Counter Attack',
+		titleVi: '',
+		stroke: '#dc143c',
+		fn: bullishCounterAttack
+	},
+	bearishCounterAttack: {
+		titleEn: 'Bearish Counter Attack',
+		titleVi: '',
+		stroke: '#00fa9a',
+		fn: bearishCounterAttack
+	},
+	cupWithHandle: {
+		titleEn: 'Cup With Handle',
+		titleVi: '',
+		stroke: '#00ff00',
+		fn: cupWithHandle
+	},
+	darkCloudCover: {
+		titleEn: 'Dark Cloud Cover',
+		titleVi: '',
+		stroke: '#0000cd',
+		fn: darkCloudCover
+	},
+	doji: {
+		titleEn: 'Doji',
+		titleVi: '',
+		stroke: '#c71585',
+		fn: doji
+	},
+	longLeggedDoji: {
+		titleEn: 'Long Legged Doji',
+		titleVi: '',
+		stroke: '#6a5acd',
+		fn: longLeggedDoji
+	},
+	dragonflyDoji: {
+		titleEn: 'Dragonfly Doji',
+		titleVi: '',
+		stroke: '#ffd700',
+		fn: dragonflyDoji
+	},
+	gravestoneDoji: {
+		titleEn: 'Gravestone Doji',
+		titleVi: '',
+		stroke: '#ff8c00',
+		fn: gravestoneDoji
+	},
+	spinningTop: {
+		titleEn: 'Spinning Top',
+		titleVi: '',
+		stroke: '#00ced1',
+		fn: spinningTop
+	},
+	fallingThreeMethods: {
+		titleEn: 'Falling Three Methods',
+		titleVi: '',
+		stroke: '#ff4500',
+		fn: fallingThreeMethods
+	},
+	risingThreeMethods: {
+		titleEn: 'Rising Three Methods',
+		titleVi: '',
+		stroke: '#9932cc',
+		fn: risingThreeMethods
 	}
 }
 

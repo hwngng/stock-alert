@@ -43,6 +43,34 @@ const userApi = {
 		method: 'post',
 		path: '/api/watchlist/symbol'
 	},
+	alertOptions: {
+		method: 'get',
+		path: '/api/alertOption'
+	},
+	alertOptionDetail: {
+		method: 'get',
+		path: '/api/alertOption'
+	},
+	removeAlertOption: {
+		method: 'delete',
+		path: '/api/alertOption'
+	},
+	insertAlertOption: {
+		method: 'post',
+		path: '/api/alertOption'
+	},
+	updateAlertOption: {
+		method: 'put',
+		path: '/api/alertOption'
+	},
+	alertTypes: {
+		method: 'get',
+		path: '/api/alertType'
+	},
+	alertTypeDetail: {
+		method: 'get',
+		path: '/api/alertType'
+	},
 }
 
 export default userApi;

@@ -267,9 +267,9 @@ h1 {
  * Price table
  */
 
- .price-table tr:hover {
-   background-color: rgba(133, 239, 243, 0.2) !important;
- }
+.price-table tr:hover {
+  background-color: rgba(133, 239, 243, 0.2) !important;
+}
 
 .price-table .symbol {
   width: 4rem;
@@ -364,7 +364,7 @@ h1 {
 
 .table-fix-head {
   overflow: auto;
-  height: calc(100vh - 165px);
+  height: calc(100vh - 180px);
 }
 
 .table-fix-head table {
@@ -498,12 +498,14 @@ h1 {
 } */
 
 .chart-modal-width {
-  width: 90vw;    /* Occupy the 90% of the screen width */
+  width: 90vw;
+  /* Occupy the 90% of the screen width */
   max-width: 90vw;
 }
 
 .chart-modal-height {
-  height: 90vh;    /* Occupy the 90% of the screen height */
+  height: 90vh;
+  /* Occupy the 90% of the screen height */
   max-height: 90vh;
   overflow: auto;
 }
@@ -559,4 +561,93 @@ h1 {
 
 .add-new-pattern-btn {
   font-size: 0.9rem;
+}
+
+/* Alert settings
+*
+*
+*/
+.setting-modal-width {
+  width: 80vw;
+  /* Occupy the 90% of the screen width */
+  max-width: 80vw;
+}
+
+.setting-modal-height {
+  height: 90vh;
+  /* Occupy the 90% of the screen height */
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.alert-control {
+  margin-left: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.alert-control-btn {
+  height: 1.4rem;
+  width: 1.4rem;
+  padding: 0;
+  font-size: 0.9rem;
+  background-color: transparent;
+  color: black;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 5px;
+}
+
+.alert-control-btn.remove:hover {
+  background-color: #dc3545;
+}
+
+.search-range {
+  margin-left: auto;
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  padding: 10px;
+}
+
+.search-range-control {
+  padding: 2px;
+  font-size: 0.9rem !important;
+  color: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 5px;
+}
+
+.highlight-area {
+  background-color: rgb(247, 247, 247);
+}
+
+.alert-criteria {
+  padding: 10px
+}
+
+.alert-type-select-menu {
+  min-width: 18rem;
+}
+
+/* alert notification
+*
+*/
+.alert-noti {
+  display: flex;
+  justify-content: space-between;
+}
+
+.alert-noti-symbol {
+  margin-right: 5px;
+  font-weight: bold;
+}
+
+.Toastify__toast-container {
+  z-index: 0;
 }

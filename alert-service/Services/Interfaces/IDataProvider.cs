@@ -19,5 +19,9 @@ namespace AlertService.Services.Interfaces
         Task<Stock> GetLatestStockData(string code);
 
         Task<SMA> GetSMAIndicator(string code, int period);
+
+        Task<StockInfo> GetLatestStockInfo(string code);
+
+        Task<List<StockInfo>> GetLatestStockInfoByExchange(List<string> exchanges);
     }
 }
