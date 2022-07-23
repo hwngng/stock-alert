@@ -1,6 +1,9 @@
+import patternMap from "../../common/patternMap";
+import common from "./common";
+
 export default function eveningStar(dataSeries) {
 	const resultPatterns = [];
-	const isEveningStarCandles = function(tradingDay1, tradingDay2, tradingDay3) {
+	const isEveningStarCandles = function (tradingDay1, tradingDay2, tradingDay3) {
 		if (tradingDay1.close <= tradingDay1.open) return false;
 		if (tradingDay3.close >= tradingDay3.open) return false;
 		if (tradingDay2.open < tradingDay1.close
@@ -20,8 +23,22 @@ export default function eveningStar(dataSeries) {
 
 	if (dataSeries.length >= 3) {
 		for (let i = 2; i < dataSeries.length; ++i) {
-			if (isEveningStarCandles(dataSeries[i-2], dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-2], dataSeries[i-1], dataSeries[i]]);
+			if (isEveningStarCandles(dataSeries[i - 2], dataSeries[i - 1], dataSeries[i])) {
+				const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+					patternMap.eveningStar.preTrend,
+					patternMap.eveningStar.confirm,
+					i - 2,
+					i);
+				if (!preTrendFollow) {
+					continue;
+				}
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 1].date
+					},
+					candles: [dataSeries[i - 2], dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 3;
 			}
 		}

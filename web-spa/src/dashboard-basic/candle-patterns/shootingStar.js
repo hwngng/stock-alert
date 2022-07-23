@@ -1,9 +1,9 @@
-import patternMap from "../../common/patternMap";
 import common from "./common";
+import patternMap from "../../common/patternMap";
 
-export default function hammerCandle(dataSeries) {
+export default function shootingStarCandle(dataSeries) {
 	const resultPatterns = [];
-	const isHammerCandle = function (tradingDay) {
+	const isShootingStarCandle = function (tradingDay) {
 		let result = true;
 		let upper = tradingDay.close;
 		let lower = tradingDay.open;
@@ -19,10 +19,10 @@ export default function hammerCandle(dataSeries) {
 		let minWick = common.getLargeBodyPercent() * 0.5;
 		if (height == 0)
 			return false;
-		if ((lower > 0 && body / lower >= minBody) &&
-			body / height > 0.15 &&
-			upperWick / height < 0.05 &&
-			lowerWick >= 2 * body &&
+		if ((lower > 0 && body / lower > minBody) &&
+			body / height > 0.1 &&
+			lowerWick / height < 0.05 &&
+			upperWick >= 2 * body &&
 			(tradingDay.low > 0 && height / tradingDay.low >= minWick))
 			return true;
 
@@ -30,12 +30,12 @@ export default function hammerCandle(dataSeries) {
 	}
 
 	dataSeries.forEach((day, idx) => {
-		if (isHammerCandle(day)) {
+		if (isShootingStarCandle(day)) {
 			const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
-																		patternMap.hammerCandle.preTrend,
-																		patternMap.hammerCandle.confirm,
-																		idx,
-																		idx);
+				patternMap.shootingStarCandle.preTrend,
+				patternMap.shootingStarCandle.confirm,
+				idx,
+				idx);
 			if (!preTrendFollow) {
 				return;
 			}
@@ -46,7 +46,6 @@ export default function hammerCandle(dataSeries) {
 				},
 				candles: [day]
 			});
-
 		}
 	});
 

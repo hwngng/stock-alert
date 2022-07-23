@@ -24,7 +24,7 @@ export default class StockChart extends Component {
             isShowModal: false,
             highlightOptions: [''],
             selectValue: '',
-            newPattern: {}
+            newPattern: null
         };
 
         this.parseDate = timeParse("%Y%m%d");
@@ -77,6 +77,11 @@ export default class StockChart extends Component {
                 }));
 
                 that.setState({ plotData });
+                if (!that.props.option)
+                    return;
+                setTimeout(() => {
+                    that.handleChangeSelect(null, null, that.props.option)
+                }, 100);
                 // ReactDOM.render(<CandleStickChartHighlightCandle code={code} data={plotData} type="hybrid" />, document.getElementById("chart"));
             })
             .catch(error => {
@@ -89,10 +94,10 @@ export default class StockChart extends Component {
         this.handleCloseModal();
     }
 
-    handleChangeSelect(event, optionIdx) {
+    handleChangeSelect(event, optionIdx, patternKey = null) {
         const { highlightOptions, plotData } = this.state;
         let { highlightPatterns, newPattern } = this.state;
-        let newPatternKey = event.target.value ?? '';
+        let newPatternKey = event?.target?.value ?? patternKey ?? '';
         newPattern = null;
         if (optionIdx != null) {
             highlightOptions[optionIdx] = newPatternKey;
@@ -102,7 +107,7 @@ export default class StockChart extends Component {
                 if (pattern) {
                     let resultPatterns = pattern.fn(plotData);
                     resultPatterns = resultPatterns.map(p => {
-                        p.push(patternKey);
+                        p['type'] = patternKey;
                         return p;
                     })
                     if (patternKey == newPatternKey && resultPatterns.length > 0)
@@ -110,20 +115,20 @@ export default class StockChart extends Component {
                     highlightPatterns = highlightPatterns.concat(resultPatterns);
                 }
             });
-            highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+            highlightPatterns.sort((pattern1, pattern2) => pattern1['candles'][0].date - pattern2['candles'][0].date);
         } else {
             highlightOptions.push(newPatternKey)
             let pattern = patternMap[newPatternKey];
             if (pattern) {
                 let resultPatterns = pattern.fn(plotData);
                 resultPatterns = resultPatterns.map(p => {
-                    p.push(newPatternKey);
+                    p['type'] = patternKey;
                     return p;
                 });
                 if (resultPatterns.length > 0)
                     newPattern = resultPatterns[resultPatterns.length - 1];
                 highlightPatterns = highlightPatterns.concat(resultPatterns);
-                highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+                highlightPatterns.sort((pattern1, pattern2) => pattern1['candles'][0].date - pattern2['candles'][0].date);
             }
         }
         this.setState({ highlightOptions, highlightPatterns, newPattern });
@@ -155,7 +160,7 @@ export default class StockChart extends Component {
                 highlightPatterns = highlightPatterns.concat(resultPatterns);
             }
         });
-        highlightPatterns.sort((pattern1, pattern2) => pattern1[0].date - pattern2[0].date);
+        highlightPatterns.sort((pattern1, pattern2) => pattern1['candles'][0].date - pattern2['candles'][0].date);
         newPattern = null;
 
         this.setState({ highlightOptions, highlightPatterns, newPattern });
@@ -164,14 +169,14 @@ export default class StockChart extends Component {
     renderPatternSelect(optionIdx = null) {
         const that = this;
         const { highlightOptions } = this.state;
-        let options = Object.keys(patternMap)?.filter(x => !highlightOptions.includes(x) || (optionIdx != null && x == highlightOptions[optionIdx])).map(pattern => {
+        let options = Object.keys(patternMap)?.filter(x => !highlightOptions.includes(x) || (optionIdx != null && x == highlightOptions[optionIdx])).map((pattern, idx) => {
             return (
-                <option value={pattern}>{`Mẫu hình ${patternMap[pattern]['titleEn']}`}</option>
+                <option key={idx} value={pattern}>{`Mẫu hình ${patternMap[pattern]['titleEn']}`}</option>
             );
         });
 
         return (
-            <div className="select-pattern">
+            <div className="select-pattern" key={optionIdx}>
                 <Form.Control className="select" as="select" aria-label="Default select example" onChange={e => that.handleChangeSelect(e, optionIdx)} value={optionIdx != null ? highlightOptions[optionIdx] : ''}>
                     <option>Chọn mẫu hình nến</option>
                     {options}

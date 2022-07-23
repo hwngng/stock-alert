@@ -1,4 +1,5 @@
 import common from "./common";
+import patternMap from "../../common/patternMap";
 
 export function onNeck(dataSeries) {
 	const resultPatterns = [];
@@ -24,7 +25,21 @@ export function onNeck(dataSeries) {
 	if (dataSeries.length >= 2) {
 		for (let i = 1; i < dataSeries.length; ++i) {
 			if (isOnNeckCandles(dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-1], dataSeries[i]]);
+				const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+					patternMap.onNeck.preTrend,
+					patternMap.onNeck.confirm,
+					i - 1,
+					i);
+				if (!preTrendFollow) {
+					continue;
+				}
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 1].date
+					},
+					candles: [dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 2;
 			}
 		}

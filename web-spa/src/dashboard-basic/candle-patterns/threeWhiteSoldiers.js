@@ -1,3 +1,6 @@
+import patternMap from "../../common/patternMap";
+import common from "./common";
+
 export default function threeWhiteSoldiers(dataSeries) {
 	const resultPatterns = [];
 	const isThreeWhiteSoldiersCandles = function(tradingDay1, tradingDay2, tradingDay3) {
@@ -23,7 +26,21 @@ export default function threeWhiteSoldiers(dataSeries) {
 	if (dataSeries.length >= 3) {
 		for (let i = 2; i < dataSeries.length; ++i) {
 			if (isThreeWhiteSoldiersCandles(dataSeries[i-2], dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-2], dataSeries[i-1], dataSeries[i]]);
+				const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+					patternMap.threeWhiteSoldiers.preTrend,
+					patternMap.threeWhiteSoldiers.confirm,
+					i - 2,
+					i);
+				if (!preTrendFollow) {
+					continue;
+				}
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 1].date
+					},
+					candles: [dataSeries[i - 2], dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 3;
 			}
 		}

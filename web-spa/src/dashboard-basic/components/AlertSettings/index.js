@@ -449,26 +449,21 @@ export default class AlertSettings extends Component {
         const { alertOptions } = this.state;
         const option = alertOptions[optionIdx];
         try {
-            let resp = await this.apiAuthRequest(userApi.insertAlertOption.path, {
-                method: userApi.insertAlertOption.method,
-                data: stdData
+            let resp = await this.apiAuthRequest(userApi.removeAlertOption.path, {
+                method: userApi.removeAlertOption.method,
+                params: { id: option['id'] }
             });
             let apiData = resp['data'];
-            if (!resp || apiData['status'] != 1) {
-                alert('Thêm cảnh báo không thành công');
+            if (!resp || apiData != 1) {
+                alert('Xóa cảnh báo không thành công');
             } else {
-                option['id'] = apiData['id'];
-                if (!alertOptions)
-                    alertOptions = [];
-                alertOptions.push(option);
-                this.hub?.invoke('SubscribeAlerts', [stdData]);
+                this.hub?.invoke('UnsubscribeAlerts', [option]);
+                alertOptions.splice(optionIdx, 1);
+                this.setState({ alertOptions });
             }
         } catch (e) {
             console.log(e);
         }
-        this.hub?.invoke('UnsubscribeAlerts', [option]);
-        alertOptions.splice(optionIdx, 1);
-        this.setState({ alertOptions });
     }
 
     render() {

@@ -1,4 +1,5 @@
 import common from "./common";
+import patternMap from "../../common/patternMap";
 
 export function bullishHarami(dataSeries) {
 	const resultPatterns = [];
@@ -25,7 +26,21 @@ export function bullishHarami(dataSeries) {
 	if (dataSeries.length >= 2) {
 		for (let i = 1; i < dataSeries.length; ++i) {
 			if (isBullishHaramiCandles(dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-1], dataSeries[i]]);
+				const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+					patternMap.bullishHarami.preTrend,
+					patternMap.bullishHarami.confirm,
+					i - 1,
+					i);
+				if (!preTrendFollow) {
+					continue;
+				}
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 1].date
+					},
+					candles: [dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 2;
 			}
 		}
@@ -58,7 +73,21 @@ export function bearishHarami(dataSeries) {
 	if (dataSeries.length >= 2) {
 		for (let i = 1; i < dataSeries.length; ++i) {
 			if (isBearishHaramiCandles(dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-1], dataSeries[i]]);
+				const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+					patternMap.bearishHarami.preTrend,
+					patternMap.bearishHarami.confirm,
+					i - 1,
+					i);
+				if (!preTrendFollow) {
+					continue;
+				}
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 1].date
+					},
+					candles: [dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 2;
 			}
 		}

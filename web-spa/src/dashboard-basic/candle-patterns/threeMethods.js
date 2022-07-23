@@ -1,4 +1,5 @@
 import common from "./common";
+import patternMap from "../../common/patternMap";
 
 export function fallingThreeMethods(dataSeries) {
 	const resultPatterns = [];
@@ -40,7 +41,18 @@ export function fallingThreeMethods(dataSeries) {
 	if (dataSeries.length >= 5) {
 		for (let i = 4; i < dataSeries.length; ++i) {
 			if (isFallingThreeMethodsCandles(dataSeries[i - 4], dataSeries[i - 3], dataSeries[i - 2], dataSeries[i - 1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i - 4], dataSeries[i - 3], dataSeries[i - 2], dataSeries[i - 1], dataSeries[i]]);
+				const confirmation  = common.computeContinuousTrend(dataSeries,
+					patternMap.fallingThreeMethods.preTrend,
+					patternMap.fallingThreeMethods.confirm,
+					i - 4,
+					i);
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 2].date
+					},
+					candles: [dataSeries[i - 4], dataSeries[i - 3], dataSeries[i - 2], dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 5;
 			}
 		}
@@ -88,7 +100,18 @@ export function risingThreeMethods(dataSeries) {
 	if (dataSeries.length >= 5) {
 		for (let i = 4; i < dataSeries.length; ++i) {
 			if (isRisingThreeMethodsCandles(dataSeries[i - 4], dataSeries[i - 3], dataSeries[i - 2], dataSeries[i - 1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i - 4], dataSeries[i - 3], dataSeries[i - 2], dataSeries[i - 1], dataSeries[i]]);
+				const confirmation  = common.computeContinuousTrend(dataSeries,
+					patternMap.risingThreeMethods.preTrend,
+					patternMap.risingThreeMethods.confirm,
+					i - 4,
+					i);
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 2].date
+					},
+					candles: [dataSeries[i - 4], dataSeries[i - 3], dataSeries[i - 2], dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 5;
 			}
 		}

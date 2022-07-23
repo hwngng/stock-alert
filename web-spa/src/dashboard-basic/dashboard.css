@@ -267,15 +267,39 @@ h1 {
  * Price table
  */
 
+ .price-table {
+  table-layout: fixed;
+ }
+
 .price-table tr:hover {
   background-color: rgba(133, 239, 243, 0.2) !important;
 }
 
 .price-table .symbol {
-  width: 4rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.price-table .col-symbol {
+  width: 8.5%;
+  min-width: 5rem;
+}
+
+.price-table .col-price {
+  width: 8.5%;
+}
+
+.price-table .col-change {
+  width: 14%;
+}
+
+.price-table .col-vol {
+  width: 10%;
+}
+
+.price-table .col-val {
+  width: 15%;
 }
 
 .symbol-link {
