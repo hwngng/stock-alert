@@ -159,7 +159,8 @@ export default class StockTicker extends Component {
             "CurrentQtty",
             "ProjectOpen",
             "TotalRoom",
-            "CurrentRoom"
+            "CurrentRoom",
+            "OpenPrice"
         ];
         this.format["SBA"] = {};
         this.format["SBA"]["S"] = [
@@ -691,14 +692,13 @@ export default class StockTicker extends Component {
             return msgObj;
         }
 
-        if (this.format[msgType][stockType].length + 1 !== msgArr.length) {
+        if (this.format[msgType][stockType].length + 1 > msgArr.length) {
             return msgObj;
         }
 
         for (let i = 0; i < this.format[msgType][stockType].length; ++i) {
             msgObj[this.format[msgType][stockType][i]] = msgArr[i + 1];
         }
-
         return msgObj;
     }
 

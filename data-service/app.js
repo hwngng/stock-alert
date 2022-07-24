@@ -64,7 +64,8 @@ routes(app);
 const server = http.Server(app);
 const io_server = io(server, { path: '/realtime' });
 server.listen(port);
-const connections = {}
+const connections = {};
+const todayOpenPrice = {};
 
 const handleSub = function (socket, data = null) {
     if (!Array.isArray(data)) {
@@ -153,7 +154,7 @@ io_server.on('connection', function (socket) {
     })
 });
 
-const fileSource = function (path) {
+const fileSource = function (path, hasOpenPrice = false) {
     let time = 0;
     lineReader.eachLine(path, function (line, last) {
         let decodedLine = '';
@@ -162,7 +163,9 @@ const fileSource = function (path) {
             var rawData = filteredMsg[2];
             decodedLine = utils.vnd.decodeVNDdata(rawData);
             let meta = utils.vnd.getMetaMessage(decodedLine);
-
+            if (!hasOpenPrice && meta.messageType == 'SMA') {
+                decodedLine += '|' + 10;
+            }
             setTimeout(function () {
                 io_server.to(meta.symbol).emit('s', decodedLine);
                 // console.log(utils.vnd.mapObjVND(decodedLine));
@@ -185,7 +188,7 @@ const wsSource = function (path) {
         console.log('connected vnd ws');
         ws.send('a');
         ws.send('s|S:' + config.allowedRooms.join(','));
-        ws.on('message', data => {
+        ws.on('message', async data => {
             data = data.toString();
             if (data == ping) {
                 ws.send(pong);
@@ -197,6 +200,7 @@ const wsSource = function (path) {
                 let rawMsg = filteredData[2];
                 decodedMsg = utils.vnd.decodeVNDdata(rawMsg);
                 let meta = utils.vnd.getMetaMessage(decodedMsg);
+                decodedMsg = await utils.vnd.addOpenPriceToSMA(meta, decodedMsg, todayOpenPrice);
                 io_server.to(meta.symbol).emit('s', decodedMsg);
             }
         });
@@ -210,7 +214,7 @@ var dataSource = config.source
 
 switch (dataSource.type) {
     case 'file':
-        fileSource(dataSource.uri);
+        fileSource(dataSource.uri, dataSource.hasOpenPrice);
         break;
     case 'ws':
         wsSource(dataSource.uri);
