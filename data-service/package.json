@@ -21,7 +21,6 @@
     "express": "^4.18.1",
     "forever": "~0.10.11",
     "line-reader": "^0.4.0",
-    "mongoose": "^4.6.1",
     "pg": "^8.7.3",
     "pg-format": "^1.0.4",
     "routes": "~0.2.0",

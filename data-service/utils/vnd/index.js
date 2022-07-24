@@ -245,7 +245,7 @@ function getMetaMessage (message) {
 	let msgObj = {};
 	let msgType = msgArr[0];
 	let stockType = msgArr[2];
-	let icode = format[msgType][stockType].indexOf('Symbol');
+	let icode = format[msgType][stockType]?.indexOf('Symbol');
 	let symbol = msgArr[icode+1];
 	return {
 		messageType: msgType,
