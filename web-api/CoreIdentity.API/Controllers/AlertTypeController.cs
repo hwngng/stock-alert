@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CoreIdentity.API.Controllers
 {
+	[Authorize(Roles = "Admin")]
 	[Produces("application/json")]
 	[Route("api/alertType")]
 	public class AlertTypeController : AuthorizedController

@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace CoreIdentity.API.Identity.Controllers
 {
-    [Authorize(AuthenticationSchemes = "Bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
     [Produces("application/json")]
     [Route("api/userRoles")]
     public class UserRolesController : Controller
