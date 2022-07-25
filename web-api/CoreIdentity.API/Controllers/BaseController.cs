@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CoreIdentity.API.Controllers
 {
-	public class BaseController : Controller
+	public abstract class BaseController : Controller
 	{
 		protected BaseController() { }
         protected IActionResult Forbidden(string message)

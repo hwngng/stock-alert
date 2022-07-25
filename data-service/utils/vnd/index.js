@@ -1,16 +1,51 @@
-function decodeVNDdata (source) {
+const axios = require('axios');
+
+function decodeVNDdata(source) {
 	let rotate = 5;
 	// char sep = '|';
 	let newSource = '';
-	
+
 	for (let i = 0; i < source.length; ++i) {
 		newSource += String.fromCharCode(source[i].charCodeAt(0) + i % rotate);
 	}
-	
+
 	return newSource;
 }
 
-function filterVNDmessage (socketMessage) {
+async function addOpenPriceToSMA(meta, decodedMsg, todayOpenPrice) {
+	if (meta['messageType'] != 'SMA')
+		return decodedMsg;
+	let now = new Date();
+	let nowEpoch = now.setUTCHours(0, 0, 0, 0);
+	let symbol = meta['symbol'];
+	if (symbol in todayOpenPrice && todayOpenPrice[symbol]['lastSync'] == nowEpoch) {
+		decodedMsg += '|' + todayOpenPrice[symbol]['open'];
+	} else {
+		try {
+			let resp = await axios({
+				url: 'https://dchart-api.vndirect.com.vn/dchart/history',
+				method: 'get',
+				params: {
+					symbol: symbol,
+					from: nowEpoch
+				}
+			});
+			let opens = resp.data['o'];
+			if (Array.isArray(opens) && opens.length > 0) {
+				let todayOpen = opens[opens.length - 1];
+				decodedMsg += '|' + todayOpen;
+				todayOpenPrice[symbol]['open'] = todayOpen;
+				todayOpenPrice[symbol]['lastSync'] = nowEpoch;
+			}
+		} catch (e) {
+			console.log(e);
+		}
+	}
+
+	return decodedMsg;
+}
+
+function filterVNDmessage(socketMessage) {
 	var result = [];
 	var sep = '|';
 	var sepMsg = ':';
@@ -20,8 +55,8 @@ function filterVNDmessage (socketMessage) {
 		var sepMsgIdx = socketMessage.indexOf(sepMsg);
 		if (sepIdx > 0 && sepMsgIdx > 0) {
 			result.push(socketMessage.substring(0, sepIdx));
-			result.push(socketMessage.substring(sepIdx+1, sepMsgIdx - sepIdx - 1));
-			result.push(socketMessage.substring(sepMsgIdx+1));
+			result.push(socketMessage.substring(sepIdx + 1, sepMsgIdx - sepIdx - 1));
+			result.push(socketMessage.substring(sepMsgIdx + 1));
 		}
 	}
 
@@ -147,6 +182,7 @@ format["SMA"]["S"] = format["SMA"]["ST"] = [
 	"ProjectOpen",
 	"TotalRoom",
 	"CurrentRoom",
+	"OpenPrice"
 ];
 format["SBA"] = {};
 format["SBA"]["S"] = [
@@ -215,12 +251,12 @@ format["SBA"]["ST"] = [
 ];
 format["sep"] = "|";
 
-function mapObjVND (message) {
+function mapObjVND(message) {
 	let msgArr = message.split(format["sep"]);
 	let msgObj = {};
 	let msgType = msgArr[0];
 	let stockType = msgArr[2];
-	
+
 	if (!msgType || !stockType) {
 		return msgObj;
 	}
@@ -234,19 +270,19 @@ function mapObjVND (message) {
 	}
 
 	for (let i = 0; i < format[msgType][stockType].length; ++i) {
-		msgObj[format[msgType][stockType][i]] = msgArr[i+1];
+		msgObj[format[msgType][stockType][i]] = msgArr[i + 1];
 	}
 
 	return msgObj;
 }
 
-function getMetaMessage (message) {
+function getMetaMessage(message) {
 	let msgArr = message.split(format["sep"]);
 	let msgObj = {};
 	let msgType = msgArr[0];
 	let stockType = msgArr[2];
-	let icode = format[msgType][stockType].indexOf('Symbol');
-	let symbol = msgArr[icode+1];
+	let icode = format[msgType][stockType]?.indexOf('Symbol');
+	let symbol = msgArr[icode + 1];
 	return {
 		messageType: msgType,
 		stockType: stockType,
@@ -258,3 +294,4 @@ exports.decodeVNDdata = decodeVNDdata;
 exports.filterVNDmessage = filterVNDmessage;
 exports.mapObjVND = mapObjVND;
 exports.getMetaMessage = getMetaMessage;
+exports.addOpenPriceToSMA = addOpenPriceToSMA;

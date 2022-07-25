@@ -3,6 +3,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { functor } from "../utils";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 
 class LabelAnnotation extends Component {
 	constructor(props) {

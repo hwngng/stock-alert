@@ -159,7 +159,8 @@ export default class StockTicker extends Component {
             "CurrentQtty",
             "ProjectOpen",
             "TotalRoom",
-            "CurrentRoom"
+            "CurrentRoom",
+            "OpenPrice"
         ];
         this.format["SBA"] = {};
         this.format["SBA"]["S"] = [
@@ -691,14 +692,13 @@ export default class StockTicker extends Component {
             return msgObj;
         }
 
-        if (this.format[msgType][stockType].length + 1 !== msgArr.length) {
+        if (this.format[msgType][stockType].length + 1 > msgArr.length) {
             return msgObj;
         }
 
         for (let i = 0; i < this.format[msgType][stockType].length; ++i) {
             msgObj[this.format[msgType][stockType][i]] = msgArr[i + 1];
         }
-
         return msgObj;
     }
 
@@ -1001,6 +1001,25 @@ export default class StockTicker extends Component {
         this.setState({ chartStock, isShowChart: true });
     }
 
+    highlightEffect() {
+        const selectedRow = document.getElementById(symbol);
+        if (selectedRow) {
+            selectedRow.scrollIntoView({ block: 'center' });
+            let matchPriceCell = selectedRow.getElementsByClassName('match-price');
+            let trend = 'nochange';
+            if (matchPriceCell[0].classList.contains('price-up'))
+                trend = 'up';
+            else if (matchPriceCell[0].classList.contains('price-down'))
+                trend = 'down';
+            selectedRow.classList.add('highlight-' + trend);
+            setTimeout(function () {
+                selectedRow.classList.remove('highlight-' + trend);
+            }, 1000);
+        } else {
+            // alert symbol not exist in this table
+        }
+    }
+
     renderStockTable(stockObjs) {
         const that = this;
         const { activeTabKey, chartStock, isShowChart } = this.state;
@@ -1012,11 +1031,8 @@ export default class StockTicker extends Component {
                             <col className="col-symbol"></col>
                             <col className="col-price"></col>
                             <col className="col-price"></col>
-                            <col className="col-price"></col>
-                            <col className="col-price"></col>
-                            <col className="col-price-lg"></col>
-                            <col className="col-price"></col>
                             <col className="col-change"></col>
+                            <col className="col-val"></col>
                             <col className="col-price"></col>
                             <col className="col-price"></col>
                             <col className="col-price"></col>
@@ -1043,6 +1059,20 @@ export default class StockTicker extends Component {
                                 s.PercentChange = this.calcPercentChange(s.MatchPrice, s.RefPrice);
                                 s.PriceTrendClass = this.getPriceTrendClass(s.MatchPrice, s.RefPrice);
                                 s.AvgPrice = this.calcAvgPrice(s.AccumulatedVal, s.AccumulatedVol);
+                                if (this.updateStockObj['Symbol'] == s['Symbol']) {
+                                    Object.keys(this.updateStockObj).forEach(key => {
+                                        switch (key) {
+                                            case 'MatchPrice':
+                                                break;
+                                            case 'DayHigh':
+                                                break;
+                                            case 'DayLow':
+                                                break;
+                                            case 'AccumulatedVal':
+                                                break;
+                                        }
+                                    });
+                                }
                                 return (
                                     <tr key={s.Symbol} id={s.Symbol} className="align-midle">
                                         <td>
@@ -1063,13 +1093,13 @@ export default class StockTicker extends Component {
                                         </td>
                                         <td className={'match-price ' + s.PriceTrendClass}>{this.formatFloat(s.MatchPrice, 2, true)}</td>
                                         <td className="price-nochange">{this.formatFloat(s.RefPrice, 2, true)}</td>
-                                        <td className={s.PriceTrendClass}>{this.formatFloatWithSign(Math.round(s.Change * 100) / 100, 2)} / {this.formatFloatWithSign(Math.round(s.PercentChange * 10) / 10, 1)}%</td>
-                                        <td>{this.formatFloat(s.AccumulatedVal, 2)}</td>
-                                        <td className={this.getPriceTrendClass(s.DayHigh, s.RefPrice)}>{this.formatFloat(s.DayHigh, 2, true)}</td>
-                                        <td className={this.getPriceTrendClass(s.AvgPrice, s.RefPrice)}>{this.formatFloat(Math.round(s.AvgPrice * 100) / 100, 2, true)}</td>
-                                        <td className={this.getPriceTrendClass(s.DayHigh, s.RefPrice)}>{this.formatFloat(s.DayLow, 2, true)}</td>
-                                        <td>{s.ForeignBuyQtty}</td>
-                                        <td>{s.ForeignSellQtty}</td>
+                                        <td className={'price-change ' + s.PriceTrendClass}>{this.formatFloatWithSign(Math.round(s.Change * 100) / 100, 2)} / {this.formatFloatWithSign(Math.round(s.PercentChange * 10) / 10, 1)}%</td>
+                                        <td className={'accumulated-val'}>{this.formatFloat(s.AccumulatedVal, 2)}</td>
+                                        <td className={'day-high ' + this.getPriceTrendClass(s.DayHigh, s.RefPrice)}>{this.formatFloat(s.DayHigh, 2, true)}</td>
+                                        <td className={'day-avg ' + this.getPriceTrendClass(s.AvgPrice, s.RefPrice)}>{this.formatFloat(Math.round(s.AvgPrice * 100) / 100, 2, true)}</td>
+                                        <td className={'day-low ' + this.getPriceTrendClass(s.DayHigh, s.RefPrice)}>{this.formatFloat(s.DayLow, 2, true)}</td>
+                                        <td className={'foreign-buy'}>{s.ForeignBuyQtty}</td>
+                                        <td className={'foreign-sell'}>{s.ForeignSellQtty}</td>
                                     </tr>
                                 );
                             })}

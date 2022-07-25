@@ -407,15 +407,16 @@ function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightPatt
 
 			let patterns = getPatterns(d, highlightPatterns);
 			if (patterns) {
-				let appendRects = patterns.map(pattern => {
+				let appendRects = patterns.map(patternObj => {
+					let pattern = patternObj['candles']
 					let currentRect = {};
 					currentRect['start'] = pattern[0];
 					currentRect['max'] = {
 						high: pattern[0].high,
 						low: pattern[0].low
 					}
-					currentRect['end'] = pattern[pattern.length - 2];
-					currentRect['end']['index'] = d['idx']['index'] + pattern.length - 2;
+					currentRect['end'] = pattern[pattern.length - 1];
+					currentRect['end']['index'] = d['idx']['index'] + pattern.length - 1;
 					for (let i = 1; i < pattern.length; ++i) {
 						if (currentRect['max'].high < pattern[i].high)
 							currentRect['max'].high = pattern[i].high;
@@ -438,14 +439,14 @@ function getCandleData(props, xAccessor, xScale, yScale, plotData, highlightPatt
 }
 
 function isHighlighted(d, highlightPatterns) {
-	let patterns = highlightPatterns.find(x => x.find(y => y.date == d.date));
+	let patterns = highlightPatterns.find(x => x['candles'].find(y => y.date == d.date));
 	if (!patterns)
 		return null;
 	return patterns;
 }
 
 function getPatterns(d, highlightPatterns) {
-	let patterns = highlightPatterns.filter(x => x[0].date == d.date);
+	let patterns = highlightPatterns.filter(x => x['candles'][0].date == d.date);
 	if (!patterns || patterns.length <= 0)
 		return null;
 	return patterns;

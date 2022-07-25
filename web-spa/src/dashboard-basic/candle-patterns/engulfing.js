@@ -1,4 +1,5 @@
 import common from "./common";
+import patternMap from "../../common/patternMap";
 
 export function bullishEngulfing(dataSeries) {
 	const resultPatterns = [];
@@ -21,7 +22,21 @@ export function bullishEngulfing(dataSeries) {
 	if (dataSeries.length >= 2) {
 		for (let i = 1; i < dataSeries.length; ++i) {
 			if (isBullishEngulfingCandles(dataSeries[i - 1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i - 1], dataSeries[i]]);
+				const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+					patternMap.bullishEngulfing.preTrend,
+					patternMap.bullishEngulfing.confirm,
+					i - 1,
+					i);
+				if (!preTrendFollow) {
+					continue;
+				}
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 1].date
+					},
+					candles: [dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 2;
 			}
 		}
@@ -50,7 +65,21 @@ export function bearishEngulfing(dataSeries) {
 	if (dataSeries.length >= 2) {
 		for (let i = 1; i < dataSeries.length; ++i) {
 			if (isBearishEngulfingCandles(dataSeries[i - 1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i - 1], dataSeries[i]]);
+				const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+					patternMap.bearishEngulfing.preTrend,
+					patternMap.bearishEngulfing.confirm,
+					i - 1,
+					i);
+				if (!preTrendFollow) {
+					continue;
+				}
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 1].date
+					},
+					candles: [dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 2;
 			}
 		}

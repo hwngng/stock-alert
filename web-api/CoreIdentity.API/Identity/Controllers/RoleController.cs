@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace CoreIdentity.API.Identity.Controllers
 {
-    [Authorize(AuthenticationSchemes = "Bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
     [Produces("application/json")]
     [Route("api/role")]
     public class RoleController : Controller

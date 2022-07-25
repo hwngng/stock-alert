@@ -1,4 +1,5 @@
 import common from "./common";
+import patternMap from "../../common/patternMap";
 
 export function spinningTop(dataSeries) {
 	const resultPatterns = [];
@@ -24,9 +25,20 @@ export function spinningTop(dataSeries) {
 		return false;
 	}
 
-	dataSeries.forEach(day => {
+	dataSeries.forEach((day, idx) => {
 		if (isSpinningTop(day)) {
-			resultPatterns.push([day]);
+			const confirmation  = common.computeContinuousTrend(dataSeries,
+				patternMap.spinningTop.preTrend,
+				patternMap.spinningTop.confirm,
+				idx,
+				idx);
+			resultPatterns.push({
+				confirmation: confirmation,
+				annotation: {
+					date: day.date
+				},
+				candles: [day]
+			});
 		}
 	});
 

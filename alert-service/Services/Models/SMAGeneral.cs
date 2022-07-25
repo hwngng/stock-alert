@@ -17,5 +17,6 @@ namespace AlertService.Services.Models
 		public decimal? ProjectOpen { get; set; }
 		public decimal? TotalRoom { get; set; }
 		public decimal? CurrentRoom { get; set; }    // sellForeignQtty
+		public decimal? OpenPrice { get; set; }    // open day price
     }
 }

@@ -49,7 +49,8 @@ const refreshAccessToken = async (apiHost, tokenModel) => {
 const WebAPIAuth = (apiHost = '', tokenModel = null) => {
 	if (!tokenModel)
 		tokenModel = Session.getAuth();
-
+	if (!tokenModel)
+		return () => Promise.resolve(-1);
 	let instance = axios.create({
 		baseURL: apiHost,
 		timeout: 30000,

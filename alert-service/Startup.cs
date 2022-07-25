@@ -52,11 +52,14 @@ namespace AlertService
             services.AddSingleton<IWebSocketHub, WebSocketHub>();
             services.AddSingleton<BasicCandle>();
             services.AddSingleton<ComplexCandle>();
+            services.AddSingleton<TechAlert>();
 			// services.AddSingleton<IHandleMessage, TestAlert>();
             services.AddSingleton<IHandleMessage>(x => x.GetService<BasicCandle>());
             services.AddSingleton<IAlertProvider>(x => x.GetService<BasicCandle>());
             services.AddSingleton<IHandleMessage>(x => x.GetService<ComplexCandle>());
             services.AddSingleton<IAlertProvider>(x => x.GetService<ComplexCandle>());
+            services.AddSingleton<IHandleMessage>(x => x.GetService<TechAlert>());
+            services.AddSingleton<IAlertProvider>(x => x.GetService<TechAlert>());
 			services.AddSingleton<IDistributeMessage, DistributeMessage>();
 			services.AddSingleton<IDataProvider, DataProvider>();
 			services.AddSingleton<AlertHandler>();

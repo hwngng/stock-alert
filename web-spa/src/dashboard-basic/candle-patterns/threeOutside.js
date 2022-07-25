@@ -1,4 +1,5 @@
 import common from "./common";
+import patternMap from "../../common/patternMap";
 
 export function threeOutsideUp(dataSeries) {
 	const resultPatterns = [];
@@ -25,7 +26,21 @@ export function threeOutsideUp(dataSeries) {
 	if (dataSeries.length >= 3) {
 		for (let i = 2; i < dataSeries.length; ++i) {
 			if (isThreeOutsideUpCandles(dataSeries[i-2], dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-2], dataSeries[i-1], dataSeries[i]]);
+				const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+					patternMap.threeOutsideUp.preTrend,
+					patternMap.threeOutsideUp.confirm,
+					i - 2,
+					i);
+				if (!preTrendFollow) {
+					continue;
+				}
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 1].date
+					},
+					candles: [dataSeries[i - 2], dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 3;
 			}
 		}
@@ -58,7 +73,21 @@ export function threeOutsideDown(dataSeries) {
 	if (dataSeries.length >= 3) {
 		for (let i = 2; i < dataSeries.length; ++i) {
 			if (isThreeOutsideDownCandles(dataSeries[i-2], dataSeries[i-1], dataSeries[i])) {
-				resultPatterns.push([dataSeries[i-2], dataSeries[i-1], dataSeries[i]]);
+				const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+					patternMap.threeOutsideDown.preTrend,
+					patternMap.threeOutsideDown.confirm,
+					i - 2,
+					i);
+				if (!preTrendFollow) {
+					continue;
+				}
+				resultPatterns.push({
+					confirmation: confirmation,
+					annotation: {
+						date: dataSeries[i - 1].date
+					},
+					candles: [dataSeries[i - 2], dataSeries[i - 1], dataSeries[i]]
+				});
 				i += 3;
 			}
 		}

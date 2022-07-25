@@ -1,5 +1,6 @@
 'use strict';
 const path = require('path');
+const auth = require("../middleware/auth");
 
 module.exports = function (app) {
   var snapshotCtrl = require('../api/controllers/SnapshotController');
@@ -14,10 +15,16 @@ module.exports = function (app) {
     .get(snapshotCtrl.get);
 
   app.route('/stock/history')
-    .get(historyCtrl.get);
+    .get(historyCtrl.get)
+    .post(auth, historyCtrl.post)
+    .put(auth, historyCtrl.put)
+    .delete(auth, historyCtrl.delete);
 
   app.route('/stock/info')
-    .get(infoCtrl.get);
+    .get(infoCtrl.get)
+    .post(auth, infoCtrl.post)
+    .put(auth, infoCtrl.put)
+    .delete(auth, infoCtrl.delete);
 
   app.route('/stock/history/withCurr')
     .get(historyCtrl.getSingleWithCurrent);

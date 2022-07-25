@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.Json;
 using AlertService.Services.Models;
 
 namespace AlertService.Services.Common
@@ -150,7 +151,8 @@ namespace AlertService.Services.Common
 				"CurrentQtty",
 				"ProjectOpen",
 				"TotalRoom",
-				"CurrentRoom"
+				"CurrentRoom",
+				"OpenPrice"
 			};
 			_fieldLocatorDict["SMA"]["S"] = _fieldLocatorDict["SMA"]["ST"] = FlipIndexValueList<string>(_fieldLocator["SMA"]["S"]);
 
@@ -256,7 +258,7 @@ namespace AlertService.Services.Common
 			{
 				return null;
 			}
-			if (_fieldLocator[msgType][stockType].Count + 1 != msgArr.Length)
+			if (_fieldLocator[msgType][stockType].Count + 1 > msgArr.Length)
 			{
 				return null;
 			}
@@ -276,7 +278,7 @@ namespace AlertService.Services.Common
 				}
 				prop.SetValue(msgObj, GetValueObject(msgArr[i + 1], prop));
 			}
-
+			
 			return msgObj;
 		}
 

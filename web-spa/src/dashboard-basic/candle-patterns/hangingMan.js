@@ -1,9 +1,9 @@
-import patternMap from "../../common/patternMap";
 import common from "./common";
+import patternMap from "../../common/patternMap";
 
-export default function hammerCandle(dataSeries) {
+export default function hangingManCandle(dataSeries) {
 	const resultPatterns = [];
-	const isHammerCandle = function (tradingDay) {
+	const isHangingManCandle = function (tradingDay) {
 		let result = true;
 		let upper = tradingDay.close;
 		let lower = tradingDay.open;
@@ -30,12 +30,12 @@ export default function hammerCandle(dataSeries) {
 	}
 
 	dataSeries.forEach((day, idx) => {
-		if (isHammerCandle(day)) {
+		if (isHangingManCandle(day)) {
 			const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
-																		patternMap.hammerCandle.preTrend,
-																		patternMap.hammerCandle.confirm,
-																		idx,
-																		idx);
+				patternMap.hangingManCandle.preTrend,
+				patternMap.hangingManCandle.confirm,
+				idx,
+				idx);
 			if (!preTrendFollow) {
 				return;
 			}
@@ -46,7 +46,6 @@ export default function hammerCandle(dataSeries) {
 				},
 				candles: [day]
 			});
-
 		}
 	});
 

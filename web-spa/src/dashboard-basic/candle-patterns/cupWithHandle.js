@@ -1,3 +1,7 @@
+import common from "./common";
+import patternMap from "../../common/patternMap";
+import Helper from "../../common/helper";
+
 const getNearestCupWithHandle = function (dataSeries, traceFrom = -1) {
 	const fluc = 0.1;
 	const cupDepthRightMax = 0.4;
@@ -86,7 +90,7 @@ const getNearestCupWithHandle = function (dataSeries, traceFrom = -1) {
 
 	cwh.leftHigh = dataSeries[lh];
 	cwh.lhIndex = lh;
-	
+
 	// validate dip price
 	dipChange = cwh.leftHigh.close - cwh.dip.close;
 	if (dipChange < cupDepthLeftMin * cwh.leftHigh.close
@@ -106,17 +110,30 @@ const getNearestCupWithHandle = function (dataSeries, traceFrom = -1) {
 export function cupWithHandle(dataSeries) {
 	const resultPatterns = [];
 	const cwhs = [];
-	
+
 	for (let i = dataSeries.length - 1; i > 5 * 5; --i)		// 8 week
 	{
 		let cwh = getNearestCupWithHandle(dataSeries, i);
 		if (!cwh)
 			continue;
 		cwhs.push(cwh);
-		resultPatterns.unshift(dataSeries.slice(cwh.lhIndex, cwh.lowHandleIndex + 1));
+		let candles = dataSeries.slice(cwh.lhIndex, cwh.lowHandleIndex + 1);
+		const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+			patternMap.cupWithHandle.preTrend,
+			patternMap.cupWithHandle.confirm,
+			i - 1,
+			i);
+		let medCandle = Helper.getMedium(candles, 0, candles.length - 1);
+		resultPatterns.unshift({
+			confirmation: confirmation,
+			annotation: {
+				date: medCandle?.date
+			},
+			candles: candles
+		});
 		i = cwh.dipIndex;
 	}
-	
+
 	return resultPatterns;
 }
 

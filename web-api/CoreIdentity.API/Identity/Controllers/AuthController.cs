@@ -485,7 +485,7 @@ namespace CoreIdentity.API.Identity.Controllers
 		/// Revoke refresh token of all user
 		/// </summary>
 		/// <returns></returns>
-		[Authorize(AuthenticationSchemes = "Bearer")]
+		[Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
 		[HttpGet]
 		[Route("revokeAll")]
 		public async Task<IActionResult> RevokeAll()
@@ -493,6 +493,14 @@ namespace CoreIdentity.API.Identity.Controllers
 			await _repo.DeleteAll();
 
 			return Ok();
+		}
+
+		[Authorize(AuthenticationSchemes = "Bearer", Roles = "Admin")]
+		[HttpGet]
+		[Route("isAdmin")]
+		public IActionResult IsAdmin()
+		{
+			return Ok(new { IsAdmin = true });
 		}
 
 		private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)

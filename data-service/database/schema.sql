@@ -14,6 +14,9 @@ CREATE TABLE stock_tickers (
     exchange_code VARCHAR(8) NULL,
     name VARCHAR(200) NULL,
     description text null
+    short_name VARCHAR(200) NULL,
+    name_eng VARCHAR(200) NULL,
+    top30 BOOLEAN NULL,
 );
 CREATE INDEX ON stock_tickers (symbol);
 CREATE INDEX ON stock_tickers (exchange_code, symbol);

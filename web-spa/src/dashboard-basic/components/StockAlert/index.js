@@ -11,6 +11,7 @@ import userApi from '../../../common/api/userApi';
 import { timeFormat } from 'd3-time-format';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import StockChart from '../StockChart';
 
 export default class StockAlert extends Component {
 
@@ -22,11 +23,15 @@ export default class StockAlert extends Component {
         this.state = {
             isShowSetting: false,
             alertOptions: [],
-            alerts: []
+            alerts: [],
+            isShowChart: false,
+            chartStock: {},
+            highlightChartPattern: null
         };
         this.hub = null;
         this.apiAuthRequest = WebAPIAuth(this.config['webApiHost']);
         this.alertTimeFormat = timeFormat('%H:%M');
+        this.canNoti = true;
     }
 
     async connect() {
@@ -49,8 +54,9 @@ export default class StockAlert extends Component {
         );
 
         connection.onreconnected(() => {
-            const { alertOptions } = this.state;
-            this.hub?.invoke('SubscribeAlerts', alertOptions);
+            const { alertOptions } = that.state;
+            that.hub?.invoke('SubscribeAlerts', alertOptions);
+            that.pauseNoti(500);
         });
 
         connection.on("Alert", (alert) => {
@@ -93,6 +99,14 @@ export default class StockAlert extends Component {
         return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
     }
 
+    pauseNoti(ms) {
+        const that = this;
+        this.canNoti = false;
+        setTimeout(function () {
+            that.canNoti = true;
+        }, ms);
+    }
+
     loadAlertOption() {
         const that = this;
 
@@ -114,7 +128,8 @@ export default class StockAlert extends Component {
                         console.log(alertOption);
                     }
                 })
-                this.hub?.invoke('SubscribeAlerts', alertOptionObj);
+                that.hub?.invoke('SubscribeAlerts', alertOptionObj);
+                that.pauseNoti(500);
                 that.setState({ alertOptions: alertOptionObj });
             })
             .catch(error => {
@@ -128,6 +143,7 @@ export default class StockAlert extends Component {
     }
 
     showNotis(alert) {
+        if (!this.canNoti) return;
         let noti = (
             <div className="alert-noti">
                 <div className="alert-noti-symbol">{alert['symbol']}</div>
@@ -146,6 +162,17 @@ export default class StockAlert extends Component {
         this.setState({ isShowSetting: false });
     }
 
+    handleOpenChartModal(event, alert) {
+        event.preventDefault();
+        let chartStock = { symbol: alert['symbol'], exchange_code: alert['exchange'] };
+        let highlightChartPattern = alert['type'];
+        this.setState({ chartStock, isShowChart: true, highlightChartPattern });
+    }
+
+    handleCloseChartModal() {
+        this.setState({ chartStock: {}, isShowChart: false });
+    }
+
     renderAlerts() {
         const that = this;
         const { alerts } = this.state;
@@ -157,7 +184,11 @@ export default class StockAlert extends Component {
             ret.push(
                 (
                     <tr key={i}>
-                        <td className="alert-symbol">{alert['symbol']}</td>
+                        <td className="alert-symbol">
+                            <div className="symbol clear-fix">
+                                <a className="symbol-link link-primary" onClick={e => that.handleOpenChartModal(e, alert)}>{alert['symbol']}</a>
+                            </div>
+                        </td>
                         <td className="border-right-0">{alert['message']}</td>
                         <td className="border-left-0">{that.alertTimeFormat(new Date(alert['publishedAt']))}</td>
                     </tr>
@@ -168,7 +199,7 @@ export default class StockAlert extends Component {
     }
 
     render() {
-        const { isShowSetting, alertOptions } = this.state;
+        const { isShowSetting, alertOptions, chartStock, isShowChart, highlightChartPattern } = this.state;
 
         return (
             <div>
@@ -217,6 +248,9 @@ export default class StockAlert extends Component {
                         alertOptions={alertOptions}
                     ></AlertSettings>
                 )}
+                {isShowChart ?
+                    (<StockChart config={this.props.config} stock={chartStock} handleCloseModal={this.handleCloseChartModal.bind(this)} option={highlightChartPattern}/>)
+                    : (<></>)}
             </div>
         );
     }

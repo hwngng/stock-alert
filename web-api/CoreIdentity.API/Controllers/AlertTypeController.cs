@@ -43,6 +43,7 @@ namespace CoreIdentity.API.Controllers
 		/// <param name="alertTypeViewModel">AlertTypeViewModel</param>
 		/// <returns></returns>
 		// POST: api/alertType
+		[Authorize(Roles = "Admin")]
 		[HttpPost]
 		public async Task<IActionResult> Insert([FromBody] AlertTypeViewModel alertTypeViewModel)
 		{
@@ -63,6 +64,7 @@ namespace CoreIdentity.API.Controllers
 		/// </summary>
 		/// <param name="alertTypeViewModel">AlertTypeViewModel</param>
 		/// <returns></returns>
+		[Authorize(Roles = "Admin")]
 		[HttpPut]
 		public async Task<IActionResult> Update([FromBody] AlertTypeViewModel alertTypeViewModel)
 		{
@@ -79,6 +81,7 @@ namespace CoreIdentity.API.Controllers
 		/// </summary>
 		/// <param name="typeKey">string</param>
 		/// <returns></returns>
+		[Authorize(Roles = "Admin")]
 		[HttpDelete]
 		public async Task<IActionResult> Delete(string typeKey)
 		{

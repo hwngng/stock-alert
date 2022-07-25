@@ -76,9 +76,9 @@ namespace AlertService.Services.Hubs
             Console.WriteLine("_clientSettings: " + JsonSerializer.Serialize(_clientSettings));
 		}
 
-		public void RemoveFilter(HubCallerContext context)
+		public void RemoveFilter(HubCallerContext context, List<AlertOption> alertOptions)
 		{
-			_clientSettings[context.ConnectionId] = new ConcurrentDictionary<string, AlertOption>();
+			// _clientSettings[context.ConnectionId] = new ConcurrentDictionary<string, AlertOption>();
 		}
 
 		public void RemoveConnection(HubCallerContext context)

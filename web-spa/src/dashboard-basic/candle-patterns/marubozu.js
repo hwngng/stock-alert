@@ -1,4 +1,5 @@
 import common from "./common";
+import patternMap from "../../common/patternMap";
 
 export function whiteMarubozu(dataSeries) {
 	const resultPatterns = [];
@@ -19,9 +20,23 @@ export function whiteMarubozu(dataSeries) {
 		return false;
 	}
 
-	dataSeries.forEach(day => {
+	dataSeries.forEach((day, idx) => {
 		if (isWhiteMarubozu(day)) {
-			resultPatterns.push([day]);
+			const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+				patternMap.whiteMarubozu.preTrend,
+				patternMap.whiteMarubozu.confirm,
+				idx,
+				idx);
+			if (!preTrendFollow) {
+				return;
+			}
+			resultPatterns.push({
+				confirmation: confirmation,
+				annotation: {
+					date: day.date
+				},
+				candles: [day]
+			});
 		}
 	});
 
@@ -47,9 +62,23 @@ export function blackMarubozu(dataSeries) {
 		return false;
 	}
 
-	dataSeries.forEach(day => {
+	dataSeries.forEach((day, idx) => {
 		if (isBlackMarubozu(day)) {
-			resultPatterns.push([day]);
+			const { preTrendFollow, confirmation } = common.computeMatchTrend(dataSeries,
+				patternMap.blackMarubozu.preTrend,
+				patternMap.blackMarubozu.confirm,
+				idx,
+				idx);
+			if (!preTrendFollow) {
+				return;
+			}
+			resultPatterns.push({
+				confirmation: confirmation,
+				annotation: {
+					date: day.date
+				},
+				candles: [day]
+			});
 		}
 	});
 

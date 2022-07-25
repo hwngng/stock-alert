@@ -38,21 +38,13 @@ namespace AlertService.Services.Common
 				return ohlcs.GetRange(from, n);
 			}
 			var last = ohlcs[ohlcs.Count - 1];
-			OHLCV currentOhlc = null;
-			if (last.Date.Date == DateTime.UtcNow.Date)
-			{       // take open price
-				currentOhlc = last.CreateCopy();
-			}
-			else
-			{
-				currentOhlc = new OHLCV();
-				currentOhlc.Open = sma.MatchPrice.Value;
-			}
+			OHLCV currentOhlc = new OHLCV();
+			currentOhlc.Open = sma.OpenPrice.Value;
 			currentOhlc.Close = sma.MatchPrice.Value;
 			currentOhlc.High = sma.DayHigh.Value;
 			currentOhlc.Low = sma.DayLow.Value;
 			currentOhlc.Volume = sma.AccumulatedVol.Value;
-
+			currentOhlc.Date = DateTime.UtcNow.Date;
 
 			var lastN = ohlcs.GetRange(from, n - 1);
 			lastN.Add(currentOhlc);
