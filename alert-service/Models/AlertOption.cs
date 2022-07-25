@@ -4,7 +4,7 @@ namespace AlertService.Models
 {
 	public class AlertOption
 	{
-		public long Id {get;set;}
+		public long Id { get; set; }
 		public long UserLocalId { get; set; }
 		public string TypeKey { get; set; }
 		public string ParametersJson { get; set; }

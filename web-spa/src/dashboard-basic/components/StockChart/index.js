@@ -57,7 +57,7 @@ export default class StockChart extends Component {
         if (!stockInfo['symbol']) return;
         this.setState({ stockInfo, isShowModal });
 
-        this.dataSvcRequest(dataServiceApi.history.path, {
+        this.dataSvcRequest(dataServiceApi.historyWithCurr.path, {
             method: dataServiceApi.history.method,
             params: {
                 codes: [stockInfo['symbol']],
@@ -197,9 +197,15 @@ export default class StockChart extends Component {
                 <div>None</div>
             );
         } else if (!plotData || !Array.isArray(plotData) || plotData.length <= 0) {
-            content = (
-                <div>Loading...</div>
-            );
+            if (plotData?.length < 2) {
+                content = (
+                    <div>No required number of historical data found</div>
+                );
+            } else {
+                content = (
+                    <div>Loading...</div>
+                );
+            }
         } else {
             content = (
                 <>
@@ -241,8 +247,11 @@ export default class StockChart extends Component {
                                 <div className="modal-symbol">
                                     ({`${stockInfo['symbol']}:${this.exchanges[stockInfo['exchange_code']]}`})
                                 </div>
-                                <a href={`/stock-chart?symbol=${stockInfo['symbol']}&exchangeCode=${stockInfo['exchange_code']}`} target="_blank">
-                                    <FontAwesomeIcon className="chart-new-tab" icon={faUpRightFromSquare} />
+                                {/* <a className="chart-new-tab" href={`/stock-chart?symbol=${stockInfo['symbol']}&exchangeCode=${stockInfo['exchange_code']}`} target="_blank">
+                                    <FontAwesomeIcon icon={faUpRightFromSquare} />
+                                </a> */}
+                                <a className="chart-new-tab" href={`https://vn.tradingview.com/chart/?symbol=${this.config.exchanges[stockInfo['exchange_code']]}%3A${stockInfo['symbol']}`} target="_blank">
+                                    Mở với tradingview <FontAwesomeIcon icon={faUpRightFromSquare} />
                                 </a>
                             </div>
                         </Modal.Title>

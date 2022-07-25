@@ -56,7 +56,7 @@ module.exports = {
 		});	
 	},
 	getSingleWithCurrent: (req, res) => {
-		let code = req.query.code;
+		let code = req.query.codes;
 		let fromTimestamp = req.query.epoch_sec_from;
 		let toTimestamp = req.query.epoch_sec_to;
 

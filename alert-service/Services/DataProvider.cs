@@ -133,8 +133,8 @@ namespace AlertService.Services
 			try
 			{
 				var client = new RestClient(_config["DataServiceApi"]);
-				var request = new RestRequest(DataServiceApi.HistoricalPriceCurrent, Method.Get);
-				var codesParam = new QueryParameter("code", string.Join(',', code));
+				var request = new RestRequest(DataServiceApi.HistoricalPrice, Method.Get);
+				var codesParam = new QueryParameter("codes", string.Join(',', code));
 				if (startFrom.HasValue)
 				{
 					var epochSecFromParam = new QueryParameter("epoch_sec_from", Utils.GetEpochTimeSec(startFrom.Value).ToString());
@@ -147,10 +147,7 @@ namespace AlertService.Services
 				}
 				request.AddParameter(codesParam);
 				var response = await client.ExecuteAsync(request);
-				var resObj = JsonSerializer.Deserialize<List<OHLCVDataService>>(response.Content, new JsonSerializerOptions
-				{
-					NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
-				});
+				var resObj = JsonSerializer.Deserialize<List<OHLCVDataService>>(response.Content, _parseOptions);
 				result = resObj?.Select(x => new OHLCV
 				{
 					Date = x.Date,
@@ -209,15 +206,32 @@ namespace AlertService.Services
 			}
 		}
 
+		private bool isSMASynced(SMA sma, List<OHLCV> ohlcs)
+		{
+			var now = DateTime.UtcNow;
+			var smaLastDate = sma.Points.LastOrDefault()?.Date;
+			var stockDataLastDate = ohlcs.LastOrDefault()?.Date;
+			if (smaLastDate is null || stockDataLastDate is null)
+				return false;
+			if (IsTradingDay(now) && IsInTradingSession(now) && now.Date == stockDataLastDate.Value.Date)
+			{
+				var previousDayIdx = ohlcs.Count - 2;
+				if (previousDayIdx < 0)
+					return false;
+				stockDataLastDate = ohlcs[previousDayIdx].Date;
+			}
+
+			return smaLastDate.Value.Date == stockDataLastDate.Value.Date;
+		}
+
 		public async Task<SMA> GetSMAIndicator(string code, int period)
 		{
 			var stockData = await GetLatestStockData(code);
 			if (_smaIndicator.ContainsKey(code)
-				&& !(_smaIndicator[code] is null)
-				&& _smaIndicator[code].Any(x => x.Period == period))
+				&& !(_smaIndicator[code] is null))
 			{
 				var currentSma = _smaIndicator[code].First(x => x.Period == period);
-				if (currentSma.Points.Last().Date == stockData.HistoricalPrice.Last().Date)
+				if (currentSma != null && isSMASynced(currentSma, stockData.HistoricalPrice))
 					return currentSma;
 			}
 			var updatedSma = Indicator.GetSMA(stockData.HistoricalPrice, period);
@@ -271,6 +285,7 @@ namespace AlertService.Services
 		{
 			var stock = new Stock();
 			stock.Symbol = code;
+			stock.ExchangeCode = (await GetLatestStockInfo(code))?.ExchangeCode;
 			stock.HistoricalPrice = await GetHistoricalPrice(code);
 			updateDataLastSync(stock);
 
@@ -353,7 +368,6 @@ namespace AlertService.Services
 				if (now.Date == lastSync.Date
 					|| now.AddDays(-1).Date == lastSync.Date)
 					return true;
-
 			}
 			else
 			{
@@ -394,6 +408,10 @@ namespace AlertService.Services
 					_stockInfo = newStockInfo;
 					_lastSyncStockInfo = DateTime.UtcNow;
 					_cache.Remove(lockKey);
+				}
+
+				if (!_stockInfo.ContainsKey(code)) {
+					return null;
 				}
 
 				return _stockInfo[code];

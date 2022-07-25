@@ -78,7 +78,7 @@ namespace AlertService.Services.Impls
 				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.EveningStar, sma.Symbol, EveningStar(stockData, sma), exchange));
 				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.MorningStar, sma.Symbol, MorningStar(stockData, sma), exchange));
 
-				Console.WriteLine("Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
+				Console.WriteLine("BasicCandle: Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
 				if (alerts.Count > 0)
 				{
 					await _alertPublisher.SendAlerts(alerts);

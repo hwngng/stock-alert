@@ -21,7 +21,7 @@ namespace AlertService.Services.Hubs
                 return false;
             if (!string.IsNullOrEmpty(alertOption.Exchange))
             {
-                var exchange = alert.Exchange.Split(',').ToList();
+                var exchange = alert?.Exchange?.Split(',').ToList();
                 var alertStockInfo = await _dataProvider.GetLatestStockInfo(alert.Symbol);
                 if (!exchange.Contains(alertStockInfo.ExchangeCode))
                 {

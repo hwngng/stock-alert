@@ -33,7 +33,7 @@ import {
 	GroupTooltip,
 	HoverTooltip
 } from "../../../react-stockcharts/lib/tooltip";
-import { ema, stochasticOscillator, bollingerBand } from "../../../react-stockcharts/lib/indicator";
+import { sma, stochasticOscillator, bollingerBand } from "../../../react-stockcharts/lib/indicator";
 import { fitWidth } from "../../../react-stockcharts/lib/helper";
 import { last } from "../../../react-stockcharts/lib/utils";
 import { LabelAnnotation, Label, Annotate } from "../../../react-stockcharts/lib/annotation";
@@ -201,7 +201,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 		let results = patterns.map(pattern => {
 			// let datePattern = Helper.getMedium(pattern, 0, pattern.length - 2);
 			let result = pattern['annotation'].date == d.date;
-			if (result && typeof(pattern['confirmation']) === 'boolean') {
+			if (result && typeof (pattern['confirmation']) === 'boolean') {
 				d.confirmation = pattern['confirmation']
 				d.patternTitle = patternMap[pattern['type']]?.titleEn;
 				return true;
@@ -218,7 +218,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 		const volHeight = totalHeight - priceHeight;
 		const { type, data: initialData, width, ratio, highlightPatterns, code, highlightOptions, focusPattern } = this.props;
 		let { mouseMoveEvent, panEvent, zoomEvent, zoomAnchor, clamp } = this.props;
-		const margin = { left: 50, right: 70, top: 30, bottom: 30 };
+		const margin = { left: 50, right: 70, top: 30, bottom: 20 };
 
 		const gridHeight = totalHeight - margin.top - margin.bottom;
 		const gridWidth = width - margin.left - margin.right;
@@ -227,11 +227,17 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 		const yGrid = showGrid ? { innerTickSize: -1 * gridWidth, tickStrokeOpacity: 0.1 } : {};
 		const xGrid = showGrid ? { innerTickSize: -1 * gridHeight, tickStrokeOpacity: 0.1 } : {};
 
-		// const ema20 = ema()
-		// 	.id(0)
-		// 	.options({ windowSize: 20 })
-		// 	.merge((d, c) => { d.ema20 = c; })
-		// 	.accessor(d => d.ema20);
+		const sma10 = sma()
+			.id(0)
+			.options({ windowSize: 10 })
+			.merge((d, c) => { d.sma10 = c; })
+			.accessor(d => d.sma10);
+
+		const sma45 = sma()
+			.id(2)
+			.options({ windowSize: 45 })
+			.merge((d, c) => { d.sma45 = c; })
+			.accessor(d => d.sma45);
 
 		// const ema50 = ema()
 		// 	.id(2)
@@ -244,7 +250,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 		// 	.accessor(d => d.bb);
 
 
-		// const calculatedData = ema20(ema50(initialData));
+		const calculatedData = sma10(sma45(initialData));
 		const xScaleProvider = discontinuousTimeScaleProvider
 			.inputDateAccessor(d => d.date);
 		const {
@@ -252,7 +258,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 			xScale,
 			xAccessor,
 			displayXAccessor,
-		} = xScaleProvider(initialData);
+		} = xScaleProvider(calculatedData);
 		let defaultStart = xAccessor(last(data)) + 1.5;
 		let defaultEnd = xAccessor(data[Math.max(0, data.length - 125)]);
 		let start = defaultStart;
@@ -294,7 +300,6 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 		}
 		this.forceReset = false;
 		let xExtents = [start, end];
-		console.log(++this.renderCount);
 		if (highlightPatterns && highlightPatterns.length > 0) {
 			this.patternCount = {};
 			highlightPatterns.forEach(pattern => {
@@ -348,13 +353,13 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 						highlightBrightnessInc={0.7}
 						offsetRight={15} />
 
-					{/* <LineSeries yAccessor={ema20.accessor()} stroke={ema20.stroke()} />
-					<LineSeries yAccessor={ema50.accessor()} stroke={ema50.stroke()} /> */}
+					<LineSeries yAccessor={sma10.accessor()} stroke={sma10.stroke()} />
+					<LineSeries yAccessor={sma45.accessor()} stroke={sma45.stroke()} />
 
 					{/* <BollingerSeries yAccessor={d => d.bb}
 						{...bbAppearance} /> */}
-					{/* <CurrentCoordinate yAccessor={ema20.accessor()} fill={ema20.stroke()} />
-					<CurrentCoordinate yAccessor={ema50.accessor()} fill={ema50.stroke()} /> */}
+					<CurrentCoordinate yAccessor={sma10.accessor()} fill={sma10.stroke()} />
+					<CurrentCoordinate yAccessor={sma45.accessor()} fill={sma45.stroke()} />
 
 					<EdgeIndicator itemType="last" orient="right" edgeAt="right"
 						yAccessor={d => d.close} fill={d => d.close > d.open ? "#46ad82" : "#DB0000"} />
@@ -372,22 +377,48 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 						origin={[-38, 15]}
 						options={[
 							{
-								yAccessor: ema20.accessor(),
-								type: ema20.type(),
-								stroke: ema20.stroke(),
-								windowSize: ema20.options().windowSize,
+								yAccessor: sma10.accessor(),
+								type: sma10.type(),
+								stroke: sma10.stroke(),
+								windowSize: sma10.options().windowSize,
 							},
 							{
-								yAccessor: ema50.accessor(),
-								type: ema50.type(),
-								stroke: ema50.stroke(),
-								windowSize: ema50.options().windowSize,
+								yAccessor: sma45.accessor(),
+								type: sma45.type(),
+								stroke: sma45.stroke(),
+								windowSize: sma45.options().windowSize,
 							},
 						]}
 					/> */}
 					<GroupTooltip
 						layout="vertical"
 						origin={[-38, 15]}
+						verticalSize={20}
+						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
+						options={[
+							{
+								yAccessor: sma10.accessor(),
+								yLabel: 'SMA(10)',
+								type: sma10.type(),
+								valueFill: sma10.stroke(),
+								stroke: sma10.stroke(),
+								withShape: true,
+								width: 50
+							},
+							{
+								yAccessor: sma45.accessor(),
+								yLabel: 'SMA(45)',
+								type: sma45.type(),
+								valueFill: sma45.stroke(),
+								stroke: sma45.stroke(),
+								withShape: true,
+								width: 50
+							},
+						]}
+					/>
+					<GroupTooltip
+						layout="vertical"
+						origin={[90, 15]}
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(0, 4).map(options => ({
@@ -402,7 +433,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 					/>
 					<GroupTooltip
 						layout="vertical"
-						origin={[120, 15]}
+						origin={[228, 15]}
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(4, 8).map(options => ({
@@ -416,7 +447,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 					/>
 					<GroupTooltip
 						layout="vertical"
-						origin={[278, 15]}
+						origin={[406, 15]}
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(8, 12).map(options => ({
@@ -447,19 +478,19 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 						onReset={this.handleReset}
 					/>
 					{/* <HoverTooltip
-						yAccessor={ema50.accessor()}
+						yAccessor={sma10.accessor()}
 						tooltipContent={this.tooltipContent([
 							{
-								label: `${ema20.type()}(${ema20.options()
+								label: `${sma10.type()}(${sma10.options()
 									.windowSize})`,
-								value: d => numberFormat(ema20.accessor()(d)),
-								stroke: ema20.stroke()
+								value: d => numberFormat(sma10.accessor()(d)),
+								stroke: sma10.stroke()
 							},
 							{
-								label: `${ema50.type()}(${ema50.options()
+								label: `${sma45.type()}(${sma45.options()
 									.windowSize})`,
-								value: d => numberFormat(ema50.accessor()(d)),
-								stroke: ema50.stroke()
+								value: d => numberFormat(sma45.accessor()(d)),
+								stroke: sma45.stroke()
 							}
 						])}
 						fontSize={15}

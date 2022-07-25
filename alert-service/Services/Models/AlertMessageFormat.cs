@@ -12,5 +12,7 @@ namespace AlertService.Services.Models
         public static readonly string ThreeWhiteSoldiers = "Nến ngày tạo thành mô hình Three White Soldiers";
         public static readonly string CupWithHandle = "Nến ngày tạo thành mô hình Cup With Handle";
         public static readonly string Test = "Nến ngày tạo thành mô hình test";
+        public static readonly string MA = "Giá hiện tại cắt {0} đường MA({1})";
+        public static readonly string RSI = "RSI({0}) {1} vùng quá {2}";
     }
 }

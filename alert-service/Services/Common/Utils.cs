@@ -44,7 +44,7 @@ namespace AlertService.Services.Common
 			currentOhlc.High = sma.DayHigh.Value;
 			currentOhlc.Low = sma.DayLow.Value;
 			currentOhlc.Volume = sma.AccumulatedVol.Value;
-
+			currentOhlc.Date = DateTime.UtcNow.Date;
 
 			var lastN = ohlcs.GetRange(from, n - 1);
 			lastN.Add(currentOhlc);

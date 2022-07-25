@@ -51,7 +51,7 @@ namespace AlertService.Services.Hubs
 
 		public async Task UnsubscribeAlerts(HubCallerContext context, List<AlertOption> alertOptions)
 		{
-			_alertPublisher.RemoveFilter(context);
+			_alertPublisher.RemoveFilter(context, alertOptions);
 		}
 
 		public async Task UserDisconnect(HubCallerContext context)

@@ -64,7 +64,7 @@ namespace AlertService.Services.Impls
 				var ret1 = GetAllCupWithHandle(stockData, sma);
 				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.CupWithHandle, sma.Symbol, ret1.message, exchange, ret1.cwhs));
 
-				Console.WriteLine("Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
+				Console.WriteLine("ComplexCandle: Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
 				if (alerts.Count > 0)
 				{
 					await _alertPublisher.SendAlerts(alerts);
