@@ -42,7 +42,13 @@ namespace AlertService.Services.Hubs
 						continue;
 					}
 					var alerts = alertProvider.GetLatestAlerts(symbols.ToList(), alertOption.TypeKey);
+					var alerts2 = new List<Alert>();
+					if (!string.IsNullOrEmpty(alertOption.TypeKey2))
+					{
+						alerts2 = alertProvider.GetLatestAlerts(symbols.ToList(), alertOption.TypeKey2);
+					}
 					aggAlerts.AddRange(alerts);
+					aggAlerts.AddRange(alerts2);
 				}
 			}
 			Console.WriteLine("aggAlerts: " + JsonSerializer.Serialize(aggAlerts));

@@ -8,6 +8,7 @@ using AlertService.Services.Domain;
 using AlertService.Services.Hubs;
 using AlertService.Services.Interfaces;
 using AlertService.Services.Models;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +20,8 @@ namespace AlertService.Services.Impls
 		public TechAlert(IConfiguration config,
 							ILogger<DataProvider> logger,
 							IDataProvider dataProvider,
-							AlertPublisher alertPublisher) : base(config, logger, dataProvider, alertPublisher)
+							AlertPublisher alertPublisher,
+							IDistributedCache cache) : base(config, logger, dataProvider, alertPublisher, cache)
 		{
 			_parseOptions = new JsonSerializerOptions
 			{
@@ -40,18 +42,18 @@ namespace AlertService.Services.Impls
 			};
 		}
 
-		public override async Task ProcessMessage(SocketMessage msg)
+		public override async Task<List<Alert>> ProcessMessage(SocketMessage msg)
 		{
 			try
 			{
 				if (msg?.Message?.MessageType != MessageType.SMA)
-					return;
+					return null;
 				var msgJson = JsonSerializer.Serialize(Convert.ChangeType(msg.Message, msg.Message.GetType()));
 				var sma = JsonSerializer.Deserialize<SMAGeneral>(msgJson, _parseOptions);
 				if (!sma.MatchPrice.HasValue)
 				{
 					_logger.LogWarning("Message does not have match price: {msg}", msgJson);
-					return;
+					return null;
 				}
 				if (_lastScanPrice.ContainsKey(sma.Symbol))
 				{
@@ -59,7 +61,7 @@ namespace AlertService.Services.Impls
 					// Console.WriteLine(string.Format("Symbol: {3}. Ratio change: {0}. Last value: {1}. Current value: {2}", change, _lastScanPrice[sma.Symbol].MatchPrice.Value, sma.MatchPrice.Value, sma.Symbol));
 					if (Math.Abs(change) < _config.GetValue<decimal>("ScanRatio"))
 					{
-						return;
+						return null;
 					}
 				}
 				_lastScanPrice[sma.Symbol] = sma;
@@ -68,23 +70,27 @@ namespace AlertService.Services.Impls
 
 				var alerts = new List<Alert>();
 
-				addAlertIfNotNull(alerts, SMA(stockData, sma, 10));
-				addAlertIfNotNull(alerts, SMA(stockData, sma, 45));
-				addAlertIfNotNull(alerts, RSI(stockData, sma, 14));
+				addAlertIfNotNull(alerts, SMA(stockData, sma, 10, msg.Timestamp));
+				addAlertIfNotNull(alerts, SMA(stockData, sma, 45, msg.Timestamp));
+				addAlertIfNotNull(alerts, RSI(stockData, sma, 14, msg.Timestamp));
 
 				Console.WriteLine("TechAlert: Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
 				if (alerts.Count > 0)
 				{
-					await _alertPublisher.SendAlerts(alerts);
+					// await _alertPublisher.SendAlerts(alerts);
 				}
+
+				return alerts;
 			}
 			catch (Exception e)
 			{
 				_logger.LogError(e, "Error ");
 			}
+
+			return null;
 		}
 
-		public Alert SMA(Stock stockData, SMAGeneral sma, int period)
+		public Alert SMA(Stock stockData, SMAGeneral sma, int period, long msgTimestamp)
 		{
 			Alert alert = null;
 
@@ -100,14 +106,18 @@ namespace AlertService.Services.Impls
 						alert = CreateAlert(AlertTypeConstant.MA10Above,
 											stockData.Symbol,
 											string.Format(AlertMessageFormat.MA, "lên", period),
-											stockData.ExchangeCode);
+											stockData.ExchangeCode,
+											null,
+											msgTimestamp);
 					}
 					else if (sma.MatchPrice < currentIndicator?.Value)
 					{
 						alert = CreateAlert(AlertTypeConstant.MA10Above,
 											stockData.Symbol,
 											string.Format(AlertMessageFormat.MA, "xuống", period),
-											stockData.ExchangeCode);
+											stockData.ExchangeCode,
+											null,
+											msgTimestamp);
 					}
 					break;
 			}
@@ -115,7 +125,7 @@ namespace AlertService.Services.Impls
 			return alert;
 		}
 
-		public Alert RSI(Stock stockData, SMAGeneral sma, int period)
+		public Alert RSI(Stock stockData, SMAGeneral sma, int period, long msgTimestamp)
 		{
 			Alert alert = null;
 
@@ -133,28 +143,36 @@ namespace AlertService.Services.Impls
 						alert = CreateAlert(AlertTypeConstant.RSI14InOverBuy,
 											stockData.Symbol,
 											string.Format(AlertMessageFormat.RSI, period, "đi vào", "mua"),
-											stockData.ExchangeCode);
+											stockData.ExchangeCode,
+											null,
+											msgTimestamp);
 					}
 					else if (currentPoint.Value < 70 && prevPoint.Value > 70)
 					{
 						alert = CreateAlert(AlertTypeConstant.RSI14InOverBuy,
 											stockData.Symbol,
 											string.Format(AlertMessageFormat.RSI, period, "đi ra", "mua"),
-											stockData.ExchangeCode);
+											stockData.ExchangeCode,
+											null,
+											msgTimestamp);
 					}
 					else if (currentPoint.Value < 30 && prevPoint.Value > 30)
 					{
 						alert = CreateAlert(AlertTypeConstant.RSI14InOverBuy,
 											stockData.Symbol,
 											string.Format(AlertMessageFormat.RSI, period, "đi vào", "bán"),
-											stockData.ExchangeCode);
+											stockData.ExchangeCode,
+											null,
+											msgTimestamp);
 					}
 					else if (currentPoint.Value > 30 && prevPoint.Value < 30)
 					{
 						alert = CreateAlert(AlertTypeConstant.RSI14InOverBuy,
 											stockData.Symbol,
 											string.Format(AlertMessageFormat.RSI, period, "đi ra", "bán"),
-											stockData.ExchangeCode);
+											stockData.ExchangeCode,
+											null,
+											msgTimestamp);
 					}
 					break;
 			}

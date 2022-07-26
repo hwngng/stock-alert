@@ -51,7 +51,8 @@ values
 SELECT "id", "symbol", "exchange_code", "dt", "open", "high", "low", "close", "volume"
 	FROM "stock_tickers" as st join "stock_prices" as sp on st.id=sp.stock_id
     where
-    symbol like 'test%' AND dt >= '2000-1-1';
+    symbol like 'AAA%' AND dt >= '2000-1-1'
+	order by dt desc;
 	
 UPDATE "stock_prices" SET "open" = '8.9',"high" = '9.6',"low" = '8.9',"close" = '9.2',"volume" = '17066' WHERE "stock_id" = '1977' AND "dt" = '2022-07-20';
 

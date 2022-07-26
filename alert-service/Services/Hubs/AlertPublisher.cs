@@ -12,68 +12,58 @@ namespace AlertService.Services.Hubs
 	public class AlertPublisher
 	{
 		private readonly IHubContext<AlertHub, IAlert> _alertHub;
-		private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, AlertOption>> _clientSettings;
+		private readonly ConcurrentDictionary<string, List<AlertOption>> _clientSettings;
 		private readonly AlertFilterService _alertFilterService;
 		public AlertPublisher(IHubContext<AlertHub, IAlert> alertHub, AlertFilterService alertFilterService)
 		{
 			_alertHub = alertHub;
 			_alertFilterService = alertFilterService;
-			_clientSettings = new ConcurrentDictionary<string, ConcurrentDictionary<string, AlertOption>>();
+			_clientSettings = new ConcurrentDictionary<string, List<AlertOption>>();
 		}
 
 		public async Task SendAlerts(List<Alert> alerts)
 		{
-			foreach (var alert in alerts)
+			await Task.Run(async () =>
 			{
-				await Task.Run(async () =>
+				foreach (var clientSetting in _clientSettings)
 				{
-					foreach (var settingPair in _clientSettings)
+					var alertOptions = clientSetting.Value;
+					foreach (var alertOption in alertOptions)
 					{
-						if (!settingPair.Value.ContainsKey(alert.Type))
+						var satisfiedAlerts = await _alertFilterService.GetAlertsSatisfyOption(alerts, alertOption);
+						// Console.WriteLine("SatisfiedAlerts count: {0}", satisfiedAlerts.Count);
+						foreach (var alert in satisfiedAlerts)
 						{
-							continue;
+							await _alertHub.Clients.Client(clientSetting.Key).Alert(alert);
 						}
-						var alertOption = settingPair.Value[alert.Type];
-						if (!(await _alertFilterService.CanAlert(alert, alertOption)))
-						{
-							continue;
-						}
-						await _alertHub.Clients.Client(settingPair.Key).Alert(alert);
 					}
-				});
-			}
+
+				}
+			});
 		}
 
 		public async Task SendAlerts(List<Alert> alerts, HubCallerContext context)
 		{
-			foreach (var alert in alerts)
+			await Task.Run(async () =>
 			{
-				await Task.Run(async () =>
+				var alertOptions = _clientSettings[context.ConnectionId];
+				foreach (var alertOption in alertOptions)
 				{
-					var setting = _clientSettings[context.ConnectionId];
-					if (!setting.ContainsKey(alert.Type))
+					var satisfiedAlerts = await _alertFilterService.GetAlertsSatisfyOption(alerts, alertOption);
+					foreach (var alert in satisfiedAlerts)
 					{
-						return; ;
+						await _alertHub.Clients.Client(context.ConnectionId).Alert(alert);
 					}
-					var alertOption = setting[alert.Type];
-					if (!(await _alertFilterService.CanAlert(alert, alertOption)))
-					{
-						return;
-					}
-					await _alertHub.Clients.Client(context.ConnectionId).Alert(alert);
-				});
-			}
+				}
+			});
 		}
 
 		public void UpdateFilter(HubCallerContext context, List<AlertOption> alertOptions)
 		{
 			if (!_clientSettings.ContainsKey(context.ConnectionId))
-				_clientSettings[context.ConnectionId] = new ConcurrentDictionary<string, AlertOption>();
-			foreach (var alertOption in alertOptions)
-			{
-				_clientSettings[context.ConnectionId][alertOption.TypeKey] = alertOption;
-			}
-            Console.WriteLine("_clientSettings: " + JsonSerializer.Serialize(_clientSettings));
+				_clientSettings[context.ConnectionId] = new List<AlertOption>();
+			_clientSettings[context.ConnectionId].AddRange(alertOptions);
+			Console.WriteLine("_clientSettings: " + JsonSerializer.Serialize(_clientSettings));
 		}
 
 		public void RemoveFilter(HubCallerContext context, List<AlertOption> alertOptions)

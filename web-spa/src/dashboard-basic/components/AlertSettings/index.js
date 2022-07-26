@@ -25,6 +25,7 @@ export default class AlertSettings extends Component {
             watchlists: null,
             createAlertModal: false,
             selectedAlertType: null,
+            selectedAlertType2: null,
             selectedSearchRangeIdx: 0,
             selectedVolumeRange: null,
             edittingOption: {}
@@ -185,16 +186,17 @@ export default class AlertSettings extends Component {
         return rangeTitle;
     }
 
-    getAlertTypeTitle(option) {
+    getAlertTypeTitle(typeKey) {
         const { alertTypes } = this.state;
-        let typeKey = option['typeKey'];
         let alertType = alertTypes.find(a => a.typeKey == typeKey);
         return alertType ? alertType['title'] : null;
     }
 
     handleOpenCreateModal(e, edittingOption = {}) {
-        let { selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange } = this.state;
-        selectedAlertType = edittingOption['typeKey'] ?? this.defaultAlertType;
+        let { selectedAlertType, selectedAlertType2, selectedSearchRangeIdx, selectedVolumeRange } = this.state;
+        // selectedAlertType = edittingOption['typeKey'] ?? this.defaultAlertType;
+        selectedAlertType = edittingOption['typeKey'];
+        selectedAlertType2 = edittingOption['typeKey2'];
         selectedSearchRangeIdx = 0;
         if (edittingOption['watchlistId'] || edittingOption['exchange']) {
             let firstIdx = this.searchRangeOptions.findIndex(o => (edittingOption['exchange'] && o['exchange'] == edittingOption['exchange'])
@@ -204,7 +206,7 @@ export default class AlertSettings extends Component {
             }
         }
         selectedVolumeRange = edittingOption['average5Volume'] ?? '';
-        this.setState({ createAlertModal: true, selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange, edittingOption });
+        this.setState({ createAlertModal: true, selectedAlertType, selectedAlertType2, selectedSearchRangeIdx, selectedVolumeRange, edittingOption });
     }
 
     handleCloseCreateModal(e) {
@@ -212,33 +214,37 @@ export default class AlertSettings extends Component {
         this.setState({ createAlertModal: false });
         setTimeout(() => {
             that.setState({
-                selectedAlertType: '',
+                selectedAlertType: null,
+                selectedAlertType2: null,
                 selectedSearchRangeIdx: 0,
                 selectedVolumeRange: ''
             });
         }, 500);
     }
 
-    handleChangeAlertType(event, node) {
+    handleChangeAlertType(event, node, rootNodeKey) {
         if (node['children'])
             return;
-        console.log(event);
+        if (rootNodeKey == 'tech') {
+            this.setState({ selectedAlertType2: node['typeKey'] });
+            return;   
+        }
         this.setState({ selectedAlertType: node['typeKey'] });
     }
 
-    renderChildren(children) {
+    renderChildren(children, rootNodeKey) {
         const that = this;
         return children.map(child => {
             return (
                 <Dropdown.Item
                     className="alert-type-select-menu"
-                    onClick={e => that.handleChangeAlertType(e, child)}
+                    onClick={e => that.handleChangeAlertType(e, child, rootNodeKey)}
                 >
                     <span>{child['title']}</span>
                     {child['children'] &&
                         (
                             <Dropdown.Submenu position="right" className="alert-type-select-menu">
-                                {this.renderChildren(child['children'])}
+                                {this.renderChildren(child['children'], rootNodeKey)}
                             </Dropdown.Submenu>
                         )}
                 </Dropdown.Item>
@@ -252,12 +258,17 @@ export default class AlertSettings extends Component {
         return node;
     }
 
-    renderAlertTypeSelect(alertTypes) {
-        const { selectedAlertType } = this.state;
+    renderAlertTypeSelect(alertTypes, fromNodeTypeKey = null) {
+        const { selectedAlertType, selectedAlertType2 } = this.state;
         this.buildTree(alertTypes, 'typeKey', 'parent');
-        console.log(alertTypes);
         let highestNodes = alertTypes.filter(x => !x['parentNode']);
-        let selectedNode = alertTypes.find(x => x['typeKey'] == (selectedAlertType ?? this.defaultAlertType));
+        if (fromNodeTypeKey) {
+            highestNodes = highestNodes.filter(x => x['typeKey'] == fromNodeTypeKey)[0]['children'];
+        }
+        let selectedNode = alertTypes.find(x => x['typeKey'] == (selectedAlertType ?? fromNodeTypeKey));
+        if (fromNodeTypeKey == 'tech') {
+            selectedNode = alertTypes.find(x => x['typeKey'] == (selectedAlertType2 ?? fromNodeTypeKey));
+        }
         let selectedTitle = '';
         if (selectedNode) {
             selectedTitle = selectedNode['title'];
@@ -270,7 +281,7 @@ export default class AlertSettings extends Component {
                 buttonClassName="alert-type-select-btn"
                 menuClassName="alert-type-select-menu"
             >
-                {this.renderChildren(highestNodes)}
+                {this.renderChildren(highestNodes, fromNodeTypeKey)}
             </Dropdown>
         );
     }
@@ -308,11 +319,12 @@ export default class AlertSettings extends Component {
     }
 
     async handleSaveAlertOption(event) {
-        const { selectedAlertType, selectedSearchRangeIdx, selectedVolumeRange, watchlists } = this.state;
+        const { selectedAlertType, selectedAlertType2, selectedSearchRangeIdx, selectedVolumeRange, watchlists } = this.state;
         let { alertOptions, edittingOption } = this.state;
         let searchRange = this.searchRangeOptions[selectedSearchRangeIdx];
         let option = {
             typeKey: selectedAlertType,
+            typeKey2: selectedAlertType2,
             exchange: searchRange['exchange'],
             watchlistId: searchRange['watchlistId'],
             average5Volume: selectedVolumeRange,
@@ -334,6 +346,8 @@ export default class AlertSettings extends Component {
 
         let dup = alertOptions.find(o => {
             if (o['typeKey'] != option['typeKey'])
+                return false;
+            if (o['typeKey2'] != option['typeKey2'])
                 return false;
             if (!Helper.isEqual(o['exchange'], option['exchange']))
                 return false;
@@ -361,7 +375,9 @@ export default class AlertSettings extends Component {
                         alert('Thêm cảnh báo không thành công');
                     } else {
                         this.hub?.invoke('UnsubscribeAlerts', [stdData]);
+                        // modify to change state of editting option
                         edittingOption['typeKey'] = option.typeKey;
+                        edittingOption['typeKey2'] = option.typeKey2;
                         edittingOption['exchange'] = option.exchange;
                         edittingOption['watchlistId'] = option.watchlistId;
                         edittingOption['average5Volume'] = option.average5Volume;
@@ -372,8 +388,8 @@ export default class AlertSettings extends Component {
                     console.log(e);
                 }
             } else {
-                let stdData = Helper.dropFalsyFields(option);
                 try {
+                    let stdData = Helper.dropFalsyFields(option);
                     let resp = await this.apiAuthRequest(userApi.insertAlertOption.path, {
                         method: userApi.insertAlertOption.method,
                         data: stdData
@@ -490,7 +506,8 @@ export default class AlertSettings extends Component {
                             </thead>
                             <tbody>
                                 {alertOptions.map((o, idx) => {
-                                    let alertTypeTitle = that.getAlertTypeTitle(o);
+                                    let alertTypeTitle = that.getAlertTypeTitle(o['typeKey']);
+                                    let alertTypeTitle2 = that.getAlertTypeTitle(o['typeKey2']);
                                     let alertRangeTitle = that.getAlertRangeTitle(o);
                                     if (!alertTypeTitle || !alertRangeTitle) {
                                         return <></>;
@@ -500,6 +517,7 @@ export default class AlertSettings extends Component {
                                                 <td>
                                                     <input name="id" type="hidden" value={o['id']}></input>
                                                     <span>{alertTypeTitle}</span>
+                                                    {alertTypeTitle2 ? (<span>{' & ' + alertTypeTitle2}</span>): (<></>)}
                                                 </td>
                                                 <td><span>{alertRangeTitle}</span></td>
                                                 <td className="align-middle">
@@ -532,7 +550,12 @@ export default class AlertSettings extends Component {
                                     <div className="alert-criteria highlight-area">
                                         <div>
                                             <span>Tiêu chí cảnh báo: </span>
-                                            {this.renderAlertTypeSelect(alertTypes)}
+                                            <span>
+                                                {this.renderAlertTypeSelect(alertTypes, 'candle')}
+                                            </span>
+                                            <span class="ml-1">
+                                                {this.renderAlertTypeSelect(alertTypes, 'tech')}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
