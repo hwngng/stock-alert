@@ -8,6 +8,7 @@ using AlertService.Services.Hubs;
 using AlertService.Services.Interfaces;
 using AlertService.Services.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +20,8 @@ namespace AlertService.Services.Impls
 		public BasicCandle(IConfiguration config,
 							ILogger<DataProvider> logger,
 							IDataProvider dataProvider,
-							AlertPublisher alertPublisher) : base(config, logger, dataProvider, alertPublisher)
+							AlertPublisher alertPublisher,
+							IDistributedCache cache) : base(config, logger, dataProvider, alertPublisher, cache)
 		{
 			_parseOptions = new JsonSerializerOptions
 			{
@@ -40,18 +42,18 @@ namespace AlertService.Services.Impls
 			};
 		}
 
-		public override async Task ProcessMessage(SocketMessage msg)
+		public override async Task<List<Alert>> ProcessMessage(SocketMessage msg)
 		{
 			try
 			{
 				if (msg?.Message?.MessageType != MessageType.SMA)
-					return;
+					return null;
 				var msgJson = JsonSerializer.Serialize(Convert.ChangeType(msg.Message, msg.Message.GetType()));
 				var sma = JsonSerializer.Deserialize<SMAGeneral>(msgJson, _parseOptions);
 				if (!sma.MatchPrice.HasValue)
 				{
 					_logger.LogWarning("Message does not have match price: {msg}", msgJson);
-					return;
+					return null;
 				}
 				if (_lastScanPrice.ContainsKey(sma.Symbol))
 				{
@@ -59,7 +61,7 @@ namespace AlertService.Services.Impls
 					// Console.WriteLine(string.Format("Symbol: {3}. Ratio change: {0}. Last value: {1}. Current value: {2}", change, _lastScanPrice[sma.Symbol].MatchPrice.Value, sma.MatchPrice.Value, sma.Symbol));
 					if (Math.Abs(change) < _config.GetValue<decimal>("ScanRatio"))
 					{
-						return;
+						return null;
 					}
 				}
 				_lastScanPrice[sma.Symbol] = sma;
@@ -68,26 +70,30 @@ namespace AlertService.Services.Impls
 
 				var alerts = new List<Alert>();
 
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.Test, sma.Symbol, Test(stockData, sma), exchange));
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.BullishEngulfing, sma.Symbol, BullishEngulfing(stockData, sma), exchange));
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.BearishEngulfing, sma.Symbol, BearishEngulfing(stockData, sma), exchange));
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.ThreeBlackCrows, sma.Symbol, ThreeBlackCrows(stockData, sma), exchange));
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.ThreeWhiteSoldiers, sma.Symbol, ThreeWhiteSoldiers(stockData, sma), exchange));
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.Hammer, sma.Symbol, Hammer(stockData, sma), exchange));
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.InvertedHammer, sma.Symbol, InvertedHammer(stockData, sma), exchange));
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.EveningStar, sma.Symbol, EveningStar(stockData, sma), exchange));
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.MorningStar, sma.Symbol, MorningStar(stockData, sma), exchange));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.Test, sma.Symbol, Test(stockData, sma), exchange, null, msg.Timestamp));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.BullishEngulfing, sma.Symbol, BullishEngulfing(stockData, sma), exchange, null, msg.Timestamp));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.BearishEngulfing, sma.Symbol, BearishEngulfing(stockData, sma), exchange, null, msg.Timestamp));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.ThreeBlackCrows, sma.Symbol, ThreeBlackCrows(stockData, sma), exchange, null, msg.Timestamp));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.ThreeWhiteSoldiers, sma.Symbol, ThreeWhiteSoldiers(stockData, sma), exchange, null, msg.Timestamp));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.Hammer, sma.Symbol, Hammer(stockData, sma), exchange, null, msg.Timestamp));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.InvertedHammer, sma.Symbol, InvertedHammer(stockData, sma), exchange, null, msg.Timestamp));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.EveningStar, sma.Symbol, EveningStar(stockData, sma), exchange, null, msg.Timestamp));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.MorningStar, sma.Symbol, MorningStar(stockData, sma), exchange, null, msg.Timestamp));
 
 				Console.WriteLine("BasicCandle: Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
 				if (alerts.Count > 0)
 				{
-					await _alertPublisher.SendAlerts(alerts);
+					// await _alertPublisher.SendAlerts(alerts);
 				}
+
+				return alerts;
 			}
 			catch (Exception e)
 			{
 				_logger.LogError(e, "Error ");
 			}
+
+			return null;
 		}
 
 		public string Test(Stock stockData, SMAGeneral sma)

@@ -7,6 +7,7 @@ namespace AlertService.Models
 		public long Id { get; set; }
 		public long UserLocalId { get; set; }
 		public string TypeKey { get; set; }
+		public string TypeKey2 { get; set; }
 		public string ParametersJson { get; set; }
 		public string Exchange { get; set; }
 		public List<Stock> Symbols { get; set; }

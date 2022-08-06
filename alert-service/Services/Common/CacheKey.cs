@@ -5,6 +5,7 @@ namespace AlertService.Services.Common
         public static string LockGetStockData = "lock_stock_data_{0}";
         public static string LockGetStockInfo = "lock_stock_info";
         public static string StockData = "stock_data_{0}";
+        public static string AlertSnapshot = "alert_snapshot_{0}";
         public static int StockDataExpire = -1;
     }
 }

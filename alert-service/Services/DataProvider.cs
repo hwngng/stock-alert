@@ -206,6 +206,24 @@ namespace AlertService.Services
 			}
 		}
 
+		public async Task<Dictionary<string, Stock>> GetLatestMultiStockData(List<string> codes)
+		{
+			try
+			{
+				var ret = new Dictionary<string, Stock>();
+				foreach (var code in codes)
+				{
+					ret[code] = await GetLatestStockData(code);
+				}
+				return ret;
+			}
+			catch (Exception e)
+			{
+				_logger.LogError(e, "Cannot get stock data");
+				throw e;
+			}
+		}
+
 		private bool isSMASynced(SMA sma, List<OHLCV> ohlcs)
 		{
 			var now = DateTime.UtcNow;
@@ -410,7 +428,8 @@ namespace AlertService.Services
 					_cache.Remove(lockKey);
 				}
 
-				if (!_stockInfo.ContainsKey(code)) {
+				if (!_stockInfo.ContainsKey(code))
+				{
 					return null;
 				}
 

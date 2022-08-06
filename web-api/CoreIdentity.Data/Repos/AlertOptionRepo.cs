@@ -33,6 +33,7 @@ namespace CoreIdentity.Data.Repos
 											Id = x.AlertOption.Id,
 											UserLocalId = x.AlertOption.UserLocalId,
 											TypeKey = x.AlertOption.TypeKey,
+											TypeKey2 = x.AlertOption.TypeKey2,
 											ParametersJson = x.AlertOption.ParametersJson,
 											Exchange = x.AlertOption.Exchange,
 											WatchlistId = x.AlertOption.WatchlistId,
@@ -57,6 +58,7 @@ namespace CoreIdentity.Data.Repos
 											Id = x.AlertOption.Id,
 											UserLocalId = x.AlertOption.UserLocalId,
 											TypeKey = x.AlertOption.TypeKey,
+											TypeKey2 = x.AlertOption.TypeKey2,
 											ParametersJson = x.AlertOption.ParametersJson,
 											Exchange = x.AlertOption.Exchange,
 											WatchlistId = x.AlertOption.WatchlistId,
@@ -72,6 +74,7 @@ namespace CoreIdentity.Data.Repos
 			{
 				UserLocalId = userId,
 				TypeKey = alertOptionViewModel.TypeKey,
+				TypeKey2 = alertOptionViewModel.TypeKey2,
 				ParametersJson = alertOptionViewModel.Parameters is null ? null : JsonSerializer.Serialize(alertOptionViewModel.Parameters),
 				Exchange = alertOptionViewModel.Exchange,
 				SymbolListJson = alertOptionViewModel.Symbols is null ? null : JsonSerializer.Serialize(alertOptionViewModel.Symbols),
@@ -95,50 +98,52 @@ namespace CoreIdentity.Data.Repos
 			var setStm = "";
 			var argCount = 0;
 			var comma = "";
-			if (!string.IsNullOrEmpty(alertOptionViewModel.TypeKey))
+			var serializeOptions = new JsonSerializerOptions
 			{
-				setStm += $"{comma}\"TypeKey\" = {{{argCount++}}}";
-				args.Add(alertOptionViewModel.TypeKey);
-				comma = ",";
-			}
-			if (!string.IsNullOrEmpty(alertOptionViewModel.Exchange))
-			{
-				setStm += $"{comma}\"Exchange\" = {{{argCount++}}}";
-				args.Add(alertOptionViewModel.Exchange);
-				comma = ",";
-			}
-			if (alertOptionViewModel.Average5Volume.HasValue)
-			{
-				setStm += $"{comma}\"Average5Volume\" = {{{argCount++}}}";
-				args.Add(alertOptionViewModel.Average5Volume);
-				comma = ",";
-			}
-			if (alertOptionViewModel.WatchlistId.HasValue)
-			{
-				setStm += $"{comma}\"WatchlistId\" = {{{argCount++}}}";
-				args.Add(alertOptionViewModel.Average5Volume);
-				comma = ",";
-			}
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+			};
+			// if (!string.IsNullOrEmpty(alertOptionViewModel.TypeKey))
+			// {
+			setStm += $"{comma}\"TypeKey\" = {{{argCount++}}}";
+			args.Add(alertOptionViewModel.TypeKey);
+			comma = ",";
+			// }
+			// if (!string.IsNullOrEmpty(alertOptionViewModel.TypeKey2))
+			// {
+			setStm += $"{comma}\"TypeKey2\" = {{{argCount++}}}";
+			args.Add(alertOptionViewModel.TypeKey2);
+			// 	comma = ",";
+			// }
+			// if (!string.IsNullOrEmpty(alertOptionViewModel.Exchange))
+			// {
+			setStm += $"{comma}\"Exchange\" = {{{argCount++}}}";
+			args.Add(alertOptionViewModel.Exchange);
+			// comma = ",";
+			// }
+			// if (alertOptionViewModel.Average5Volume.HasValue)
+			// {
+			setStm += $"{comma}\"Average5Volume\" = {{{argCount++}}}";
+			args.Add(alertOptionViewModel.Average5Volume);
+			// comma = ",";
+			// }
+			// if (alertOptionViewModel.WatchlistId.HasValue)
+			// {
+			setStm += $"{comma}\"WatchlistId\" = {{{argCount++}}}";
+			args.Add(alertOptionViewModel.WatchlistId);
+			// comma = ",";
+			// }
 			if (!(alertOptionViewModel.Parameters is null))
 			{
 				setStm += $"{comma}\"ParametersJson\" = {{{argCount++}}}";
-				var serializeOptions = new JsonSerializerOptions
-				{
-					PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-				};
 				args.Add(JsonSerializer.Serialize(alertOptionViewModel.Parameters, serializeOptions));
 				comma = ",";
 			}
-			if (!(alertOptionViewModel.Symbols is null))
-			{
-				setStm += $"{comma}\"SymbolListJson\" = {{{argCount++}}}";
-				var serializeOptions = new JsonSerializerOptions
-				{
-					PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-				};
-				args.Add(JsonSerializer.Serialize(alertOptionViewModel.Symbols, serializeOptions));
-				comma = ",";
-			}
+			// if (!(alertOptionViewModel.Symbols is null))
+			// {
+			setStm += $"{comma}\"SymbolListJson\" = {{{argCount++}}}";
+			args.Add(alertOptionViewModel.Symbols != null ? JsonSerializer.Serialize(alertOptionViewModel.Symbols, serializeOptions) : null);
+			comma = ",";
+			// }
 			if (string.IsNullOrEmpty(setStm))
 				return await Task.FromResult(-1);
 			updateStatement += setStm;

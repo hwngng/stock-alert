@@ -9,6 +9,7 @@ using AlertService.Services.Hubs;
 using AlertService.Services.Interfaces;
 using AlertService.Services.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -20,7 +21,8 @@ namespace AlertService.Services.Impls
 		public ComplexCandle(IConfiguration config,
 							ILogger<DataProvider> logger,
 							IDataProvider dataProvider,
-							AlertPublisher alertPublisher) : base(config, logger, dataProvider, alertPublisher)
+							AlertPublisher alertPublisher,
+							IDistributedCache cache) : base(config, logger, dataProvider, alertPublisher, cache)
 		{
 			_parseOptions = new JsonSerializerOptions
 			{
@@ -33,18 +35,18 @@ namespace AlertService.Services.Impls
 			};
 		}
 
-		public override async Task ProcessMessage(SocketMessage msg)
+		public override async Task<List<Alert>> ProcessMessage(SocketMessage msg)
 		{
 			try
 			{
 				if (msg?.Message?.MessageType != MessageType.SMA)
-					return;
+					return null;
 				var msgJson = JsonSerializer.Serialize(Convert.ChangeType(msg.Message, msg.Message.GetType()));
 				var sma = JsonSerializer.Deserialize<SMAGeneral>(msgJson, _parseOptions);
 				if (!sma.MatchPrice.HasValue)
 				{
 					_logger.LogWarning("Message does not have match price: {msg}", msgJson);
-					return;
+					return null;
 				}
 				if (_lastScanPrice.ContainsKey(sma.Symbol))
 				{
@@ -52,7 +54,7 @@ namespace AlertService.Services.Impls
 					// Console.WriteLine(string.Format("Symbol: {3}. Ratio change: {0}. Last value: {1}. Current value: {2}", change, _lastScanPrice[sma.Symbol].MatchPrice.Value, sma.MatchPrice.Value, sma.Symbol));
 					if (Math.Abs(change) < _config.GetValue<decimal>("ScanRatio"))
 					{
-						return;
+						return null;
 					}
 				}
 				_lastScanPrice[sma.Symbol] = sma;
@@ -62,18 +64,22 @@ namespace AlertService.Services.Impls
 				var alerts = new List<Alert>();
 
 				var ret1 = GetAllCupWithHandle(stockData, sma);
-				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.CupWithHandle, sma.Symbol, ret1.message, exchange, ret1.cwhs));
+				addAlertIfNotNull(alerts, CreateAlert(AlertTypeConstant.CupWithHandle, sma.Symbol, ret1.message, exchange, ret1.cwhs, msg.Timestamp));
 
 				Console.WriteLine("ComplexCandle: Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
 				if (alerts.Count > 0)
 				{
-					await _alertPublisher.SendAlerts(alerts);
+					// await _alertPublisher.SendAlerts(alerts);
 				}
+
+				return alerts;
 			}
 			catch (Exception e)
 			{
 				_logger.LogError(e, "Error ");
 			}
+
+			return null;
 		}
 
 		public (string message, object cwhs) GetAllCupWithHandle(Stock stockData, SMAGeneral sma, int range = 280)

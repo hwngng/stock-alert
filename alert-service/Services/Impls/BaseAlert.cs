@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
+using AlertService.Services.Common;
 using AlertService.Services.Hubs;
 using AlertService.Services.Interfaces;
 using AlertService.Services.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -20,20 +22,23 @@ namespace AlertService.Services.Impls
 		protected readonly AlertPublisher _alertPublisher;
 		protected readonly Dictionary<string, Dictionary<string, Alert>> _latestAlerts;     // save latest alert for each symbol and each type key
 		protected List<string> _selfManageType;
+		private readonly IDistributedCache _cache;
 		public BaseAlert(IConfiguration config,
 								ILogger<DataProvider> logger,
 								IDataProvider dataProvider,
-								AlertPublisher alertPublisher)
+								AlertPublisher alertPublisher,
+								IDistributedCache cache)
 		{
 			_config = config;
 			_logger = logger;
 			_dataProvider = dataProvider;
 			_lastScanPrice = new Dictionary<string, SMAGeneral>();
 			_alertPublisher = alertPublisher;
+			_cache = cache;
 			_latestAlerts = new Dictionary<string, Dictionary<string, Alert>>();
 		}
 
-		public abstract Task ProcessMessage(SocketMessage msg);
+		public abstract Task<List<Alert>> ProcessMessage(SocketMessage msg);
 
 		protected void addAlertIfNotNull(List<Alert> alerts, Alert added)
 		{
@@ -62,7 +67,7 @@ namespace AlertService.Services.Impls
 			}
 		}
 
-		public Alert CreateAlert(string type, string symbol, string message, string exchange = null, object description = null)
+		public Alert CreateAlert(string type, string symbol, string message, string exchange = null, object description = null, long messageTimestamp = 0)
 		{
 			var alert = string.IsNullOrEmpty(message) ?
 					null
@@ -73,7 +78,8 @@ namespace AlertService.Services.Impls
 						Message = message,
 						Exchange = exchange,
 						Description = description,
-						PublishedAt = DateTime.UtcNow
+						PublishedAt = DateTime.UtcNow,
+						MessageTimestamp = messageTimestamp
 					};
 			if (alert is null)
 				return alert;
