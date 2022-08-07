@@ -42,10 +42,11 @@ namespace AlertService
             }));
             var wsSettings = new WebSocketSettings();
             // wsSettings.SubStocks = Configuration.GetValue<List<string>>("WebSocket:SubStocks");
+            var redisSetting = Configuration.GetSection("Redis").Get<RedisSetting>();
             services.AddStackExchangeRedisCache(options =>
             {
-                options.Configuration = "localhost:6379";
-                options.InstanceName = "AlertService_";
+                options.Configuration = redisSetting.ConnectionString;
+                options.InstanceName = redisSetting.KeyPrefix;
             });
             Configuration.GetSection("WebSocket").Bind(wsSettings);
             services.AddSingleton(wsSettings);

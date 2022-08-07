@@ -99,9 +99,9 @@ const NavBar = (props) => {
                         <li className="nav-item active">
                             <a className="nav-link" href="/"><FontAwesomeIcon icon={faHouse} style={{ fontSize: 'large' }} /></a>
                         </li>
-                        <li className="nav-item active">
+                        {/* <li className="nav-item active">
                             <a className="nav-link" href="/alert-settings">Bộ lọc Cổ phiếu</a>
-                        </li>
+                        </li> */}
                         <li className="nav-item active">
                             <a className="nav-link" href="#">Về chúng tôi</a>
                         </li>

@@ -46,8 +46,6 @@ namespace AlertService.Services
 				try
 				{
 					_logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-					var res = await _dataProvider.GetLatestStockInfo("FLC");
-					_logger.LogInformation(JsonSerializer.Serialize(res));
 					await _webSocketHub.Connect();
 					await _webSocketHub.SubscribeStock(_ws.SubStocks);
 					await _webSocketHub.StartFetchMessage(stoppingToken);
