@@ -67,7 +67,7 @@ namespace AlertService.Services.Impls
 			}
 		}
 
-		public Alert CreateAlert(string type, string symbol, string message, string exchange = null, object description = null, long messageTimestamp = 0)
+		protected Alert CreateAlert(string type, string symbol, string message, string exchange = null, object description = null, long messageTimestamp = 0)
 		{
 			var alert = string.IsNullOrEmpty(message) ?
 					null

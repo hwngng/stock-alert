@@ -16,9 +16,7 @@ export function bullishHarami(dataSeries) {
 		if ((lower1 > 0 && body1/lower1 >= minBody)
 			&& body2 < 0.25*body1
 			&& upper2 < upper1 - body1*0.1
-			&& lower2 > lower1 + body1*0.1
-			&& tradingDay2.high <= upper1
-			&& tradingDay2.low >= lower1)
+			&& lower2 > lower1 + body1*0.1)
 			return true;
 		return false;
 	}
@@ -63,9 +61,7 @@ export function bearishHarami(dataSeries) {
 		if ((lower1 > 0 && body1/lower1 >= minBody)
 			&& body2 < 0.25*body1
 			&& upper2 < upper1 - body1*0.1
-			&& lower2 > lower1 + body1*0.1
-			&& tradingDay2.high <= upper1
-			&& tradingDay2.low >= lower1)
+			&& lower2 > lower1 + body1*0.1)
 			return true;
 		return false;
 	}

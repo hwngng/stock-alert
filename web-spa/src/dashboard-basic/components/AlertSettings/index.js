@@ -327,7 +327,7 @@ export default class AlertSettings extends Component {
             typeKey2: selectedAlertType2,
             exchange: searchRange['exchange'],
             watchlistId: searchRange['watchlistId'],
-            average5Volume: selectedVolumeRange,
+            average5Volume: selectedVolumeRange ? parseFloat(selectedVolumeRange) : null,
         }
         if (option.watchlistId) {
             let resp = await this.apiAuthRequest(userApi.watchlistDetail.path, {
@@ -372,7 +372,7 @@ export default class AlertSettings extends Component {
                     });
                     let apiData = resp['data'];
                     if (!resp || apiData != 1) {
-                        alert('Thêm cảnh báo không thành công');
+                        alert('Lưu cảnh báo không thành công');
                     } else {
                         this.hub?.invoke('UnsubscribeAlerts', [stdData]);
                         // modify to change state of editting option
@@ -386,6 +386,7 @@ export default class AlertSettings extends Component {
                     }
                 } catch (e) {
                     console.log(e);
+                    alert('Lưu cảnh báo không thành công');
                 }
             } else {
                 try {
@@ -406,6 +407,7 @@ export default class AlertSettings extends Component {
                     }
                 } catch (e) {
                     console.log(e);
+                    alert('Thêm cảnh báo không thành công');
                 }
             }
         }
@@ -508,6 +510,11 @@ export default class AlertSettings extends Component {
                                 {alertOptions.map((o, idx) => {
                                     let alertTypeTitle = that.getAlertTypeTitle(o['typeKey']);
                                     let alertTypeTitle2 = that.getAlertTypeTitle(o['typeKey2']);
+                                    if (alertTypeTitle) {
+                                        alertTypeTitle += (' & ' + alertTypeTitle2);
+                                    } else {
+                                        alertTypeTitle = alertTypeTitle2;
+                                    }
                                     let alertRangeTitle = that.getAlertRangeTitle(o);
                                     if (!alertTypeTitle || !alertRangeTitle) {
                                         return <></>;
@@ -517,7 +524,6 @@ export default class AlertSettings extends Component {
                                                 <td>
                                                     <input name="id" type="hidden" value={o['id']}></input>
                                                     <span>{alertTypeTitle}</span>
-                                                    {alertTypeTitle2 ? (<span>{' & ' + alertTypeTitle2}</span>): (<></>)}
                                                 </td>
                                                 <td><span>{alertRangeTitle}</span></td>
                                                 <td className="align-middle">

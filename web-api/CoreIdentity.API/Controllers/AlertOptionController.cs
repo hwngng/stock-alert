@@ -48,7 +48,7 @@ namespace CoreIdentity.API.Controllers
 		[HttpPost]
 		public async Task<IActionResult> Insert([FromBody] AlertOptionViewModel alertOptionViewModel)
 		{
-			if (alertOptionViewModel is null || string.IsNullOrEmpty(alertOptionViewModel.TypeKey))
+			if (alertOptionViewModel is null || (string.IsNullOrEmpty(alertOptionViewModel.TypeKey) && string.IsNullOrEmpty(alertOptionViewModel.TypeKey2)))
 				return BadRequest();
 			var (status, insertedId) = await _repo.InsertAlertOption(_sessionContext.UserLocalId, alertOptionViewModel);
 			if (status < 1) {

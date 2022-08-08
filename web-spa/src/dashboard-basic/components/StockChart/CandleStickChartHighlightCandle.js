@@ -34,7 +34,7 @@ import {
 	HoverTooltip
 } from "../../../react-stockcharts/lib/tooltip";
 import { sma, stochasticOscillator, bollingerBand } from "../../../react-stockcharts/lib/indicator";
-import { fitWidth } from "../../../react-stockcharts/lib/helper";
+import { fitWidth, fitDimensions } from "../../../react-stockcharts/lib/helper";
 import { last } from "../../../react-stockcharts/lib/utils";
 import { LabelAnnotation, Label, Annotate } from "../../../react-stockcharts/lib/annotation";
 import { Brush } from "../../../react-stockcharts/lib/interactive";
@@ -213,12 +213,12 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 
 	render() {
 		const that = this;
-		const totalHeight = 700;
-		const priceHeight = 600;
+		const totalHeight = 680;
+		const priceHeight = 580;
 		const volHeight = totalHeight - priceHeight;
 		const { type, data: initialData, width, ratio, highlightPatterns, code, highlightOptions, focusPattern } = this.props;
 		let { mouseMoveEvent, panEvent, zoomEvent, zoomAnchor, clamp } = this.props;
-		const margin = { left: 50, right: 70, top: 30, bottom: 20 };
+		const margin = { left: 50, right: 70, top: 50, bottom: 20 };
 
 		const gridHeight = totalHeight - margin.top - margin.bottom;
 		const gridWidth = width - margin.left - margin.right;
@@ -371,7 +371,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 						// onBrush={this.handleBrush3}
 					/> */}
 
-					<OHLCTooltip origin={[-40, -10]} />
+					<OHLCTooltip origin={[-40, -20]} />
 					{/* <MovingAverageTooltip
 						onClick={e => console.log(e)}
 						origin={[-38, 15]}
@@ -392,7 +392,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 					/> */}
 					<GroupTooltip
 						layout="vertical"
-						origin={[-38, 15]}
+						origin={[-38, 5]}
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={[
@@ -418,7 +418,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 					/>
 					<GroupTooltip
 						layout="vertical"
-						origin={[90, 15]}
+						origin={[90, 5]}
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(0, 4).map(options => ({
@@ -433,7 +433,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 					/>
 					<GroupTooltip
 						layout="vertical"
-						origin={[228, 15]}
+						origin={[228, 5]}
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(4, 8).map(options => ({
@@ -447,7 +447,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 					/>
 					<GroupTooltip
 						layout="vertical"
-						origin={[406, 15]}
+						origin={[406, 5]}
 						verticalSize={20}
 						onClick={options => this.zoomOnClickTooltip(options['tooltipKey'], highlightPatterns)}
 						options={highlightOptions.filter(options => options).slice(8, 12).map(options => ({
@@ -498,7 +498,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 				</Chart>
 				<Chart id={2}
 					yExtents={d => d.volume}
-					height={volHeight} origin={(w, h) => [0, h - 150]}
+					height={volHeight} origin={(w, h) => [0, h - 130]}
 				>
 					<YAxis axisAt="left" orient="left" ticks={5} tickFormat={format(".2s")}
 						zoomEnabled={zoomEvent} stroke="#000000" />

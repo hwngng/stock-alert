@@ -57,7 +57,7 @@ export default class StockChart extends Component {
         if (!stockInfo['symbol']) return;
         this.setState({ stockInfo, isShowModal });
 
-        this.dataSvcRequest(dataServiceApi.historyWithCurr.path, {
+        this.dataSvcRequest(dataServiceApi.history.path, {
             method: dataServiceApi.history.method,
             params: {
                 codes: [stockInfo['symbol']],
@@ -80,7 +80,7 @@ export default class StockChart extends Component {
                 if (!that.props.option)
                     return;
                 setTimeout(() => {
-                    that.handleChangeSelect(null, null, that.props.option)
+                    that.handleChangeSelect(null, 0, that.props.option)
                 }, 100);
                 // ReactDOM.render(<CandleStickChartHighlightCandle code={code} data={plotData} type="hybrid" />, document.getElementById("chart"));
             })
@@ -237,7 +237,7 @@ export default class StockChart extends Component {
 
         if (isShowModal) {
             return (
-                <Modal show onHide={this.handleCloseModal} dialogClassName="chart-modal-width" contentClassName="chart-modal-height" centered>
+                <Modal id="modal-chart" show onHide={this.handleCloseModal} dialogClassName="chart-modal-width" contentClassName="chart-modal-height" centered>
                     <Modal.Header closeButton>
                         <Modal.Title>
                             <div>

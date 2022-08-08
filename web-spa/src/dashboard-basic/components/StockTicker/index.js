@@ -1118,6 +1118,9 @@ export default class StockTicker extends Component {
     }
 
     onChangeEditWatchlist(event, watchlist) {
+        event.preventDefault();
+        event.stopPropagation();
+        console.log(watchlist);
         let { newWatchlistName } = this.state;
         newWatchlistName = event.target.value;
         this.setState({ newWatchlistName });
@@ -1159,6 +1162,7 @@ export default class StockTicker extends Component {
     }
 
     onEnterEditWatchlist(event, wid) {
+        event.stopPropagation();
         if (event.keyCode === 13) {
             this.updateWatchlist(wid, true, false);
         }
