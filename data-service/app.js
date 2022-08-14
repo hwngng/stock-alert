@@ -10,6 +10,7 @@ const bodyParser = require('body-parser');
 const cors = require("cors");
 const WebSocket = require('ws');
 const pg = require('pg');
+const fs = require('fs');
 const pool = pg.Pool;
 
 const conn = new pool({
@@ -177,6 +178,47 @@ const fileSource = function (path, hasOpenPrice = false) {
     });
 }
 
+const filePretty = function (path, hasOpenPrice = false) {
+    let time = 0;
+    // let reqTime = 0;
+    // config.allowedRooms.forEach((symbol, idx) => {
+    //     let meta = { 'messageType': 'SMA', 'symbol': symbol };
+    //     decodedLine = '';
+    //     setTimeout(async () => {
+    //         decodedLine = await utils.vnd.addOpenPriceToSMA(meta, decodedLine, todayOpenPrice);
+    //         console.log(`${idx} / ${config.allowedRooms.length}`);
+    //     }, reqTime);
+    //     reqTime += 100;
+    // });
+    // let lineCount = 0;
+    lineReader.eachLine(path, async function (line, last) {
+        try {
+            let decodedLine = line;
+            let meta = utils.vnd.getMetaMessage(decodedLine);
+            setTimeout(async function () {
+                io_server.to(meta.symbol).emit('s', decodedLine);
+                // console.log(utils.vnd.mapObjVND(decodedLine));
+                if (!hasOpenPrice && meta.messageType == 'SMA') {
+                    // decodedLine += '|' + 10;
+                    decodedLine = await utils.vnd.addOpenPriceToSMA(meta, decodedLine, todayOpenPrice);
+                }
+                // fs.appendFile('vnd_open.txt', decodedLine + '\n', err => {
+                //     if (err) {
+                //         console.error(err);
+                //     }
+                //     // done!
+                // });
+                // console.log(++lineCount);
+            }, time);
+            if (last) {
+            }
+            time += 20;
+        } catch (e) {
+            console.log(e);
+        }
+    });
+}
+
 const wsSource = function (path) {
     const that = this;
     const ws = new WebSocket(path);
@@ -196,11 +238,19 @@ const wsSource = function (path) {
             }
             let decodedMsg = '';
             var filteredData = utils.vnd.filterVNDmessage(data);
+            // console.log(decodedMsg);
             if (filteredData.length == 3) {
                 let rawMsg = filteredData[2];
                 decodedMsg = utils.vnd.decodeVNDdata(rawMsg);
                 let meta = utils.vnd.getMetaMessage(decodedMsg);
                 decodedMsg = await utils.vnd.addOpenPriceToSMA(meta, decodedMsg, todayOpenPrice);
+                // fs.appendFile('vnd.txt', decodedMsg + '\n', err => {
+                //     if (err) {
+                //         console.error(err);
+                //     }
+                //     // done!
+                // });
+
                 io_server.to(meta.symbol).emit('s', decodedMsg);
             }
         });
@@ -213,11 +263,14 @@ const wsSource = function (path) {
 var dataSource = config.source
 
 switch (dataSource.type) {
-    case 'file':
+    case 'file_raw':
         fileSource(dataSource.uri, dataSource.hasOpenPrice);
         break;
     case 'ws':
         wsSource(dataSource.uri);
+        break;
+    case 'file_pretty':
+        filePretty(dataSource.uri, dataSource.hasOpenPrice, true);
         break;
     default:
         break;

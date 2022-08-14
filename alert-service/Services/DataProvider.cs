@@ -118,6 +118,7 @@ namespace AlertService.Services
 									Symbol = x.Symbol,
 									ExchangeCode = x.ExchangeCode
 								}).FirstOrDefault());
+				// _logger.LogInformation("Get stock info from data service successful");
 			}
 			catch (Exception e)
 			{
@@ -404,6 +405,7 @@ namespace AlertService.Services
 				var lockKey = string.Format(CacheKey.LockGetStockInfo);
 				var isLocked = false;
 				var lockRetry = 0;
+				// _logger.LogInformation("Get stock info of stock: {0}", code);
 				do
 				{
 					isLocked = _cache.GetString(lockKey) == "1";

@@ -510,9 +510,9 @@ export default class AlertSettings extends Component {
                                 {alertOptions.map((o, idx) => {
                                     let alertTypeTitle = that.getAlertTypeTitle(o['typeKey']);
                                     let alertTypeTitle2 = that.getAlertTypeTitle(o['typeKey2']);
-                                    if (alertTypeTitle) {
+                                    if (alertTypeTitle && alertTypeTitle2) {
                                         alertTypeTitle += (' & ' + alertTypeTitle2);
-                                    } else {
+                                    } else if (alertTypeTitle2) {
                                         alertTypeTitle = alertTypeTitle2;
                                     }
                                     let alertRangeTitle = that.getAlertRangeTitle(o);

@@ -15,8 +15,8 @@ function decodeVNDdata(source) {
 async function addOpenPriceToSMA(meta, decodedMsg, todayOpenPrice) {
 	if (meta['messageType'] != 'SMA')
 		return decodedMsg;
-	let now = new Date();
-	let nowEpoch = now.setUTCHours(0, 0, 0, 0);
+	let now = new Date(2022,7,13);
+	let nowEpoch = now.setUTCHours(0, 0, 0, 0) / 1000;
 	let symbol = meta['symbol'];
 	if (symbol in todayOpenPrice && todayOpenPrice[symbol]['lastSync'] == nowEpoch) {
 		decodedMsg += '|' + todayOpenPrice[symbol]['open'];
@@ -34,6 +34,7 @@ async function addOpenPriceToSMA(meta, decodedMsg, todayOpenPrice) {
 			if (Array.isArray(opens) && opens.length > 0) {
 				let todayOpen = opens[opens.length - 1];
 				decodedMsg += '|' + todayOpen;
+				todayOpenPrice[symbol] = {};
 				todayOpenPrice[symbol]['open'] = todayOpen;
 				todayOpenPrice[symbol]['lastSync'] = nowEpoch;
 			}

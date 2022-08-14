@@ -11,7 +11,7 @@ module.exports = {
 			res.status(500);
 			return;
 		}
-		
+
 		let codes = req.query.codes;
 		let fromTimestamp = req.query.epoch_sec_from;
 		let toTimestamp = req.query.epoch_sec_to;
@@ -23,19 +23,19 @@ module.exports = {
 			res.json(error);
 			return;
 		}
-		
+
 		// preprocess input
 		codes = codes.split(',');
-		fromTimestamp = (fromTimestamp ? new Date(fromTimestamp*1000) : new Date(915148800000)).toISOString();
+		fromTimestamp = (fromTimestamp ? new Date(fromTimestamp * 1000) : new Date(915148800000)).toISOString();
 		toTimestamp = (toTimestamp ? new Date(toTimestamp * 1000) : new Date()).toISOString();
 		if (exchangeCodes)
 			exchangeCodes = exchangeCodes.split(',');
-		
+
 		const query = `SELECT "stock_id", "symbol", "exchange_code", "dt", "open", "high", "low", "close", "volume"\
 						FROM "stock_tickers" as st join "stock_prices" as sp on st.id=sp.stock_id\
 						WHERE "symbol" = ANY ($1)\
 							AND ($2 <= dt and  dt <= $3)\
-							${exchangeCodes ? 'AND "exchange_code" = ANY ($4)': ''}\
+							${exchangeCodes ? 'AND "exchange_code" = ANY ($4)' : ''}\
 						ORDER BY "symbol", "dt"`;
 		const values = [codes, fromTimestamp, toTimestamp];
 		if (exchangeCodes) {
@@ -53,7 +53,7 @@ module.exports = {
 				}
 				res.json(results.rows);
 			});
-		});	
+		});
 	},
 	getSingleWithCurrent: (req, res) => {
 		let code = req.query.codes;
@@ -68,7 +68,7 @@ module.exports = {
 		}
 
 		fromTimestamp = fromTimestamp ? fromTimestamp : 915148800;
-		toTimestamp = toTimestamp ? toTimestamp : Date()/1000;
+		toTimestamp = toTimestamp ? toTimestamp : Date() / 1000;
 
 		let params = {
 			symbol: code,
@@ -79,28 +79,28 @@ module.exports = {
 		axios.get('https://dchart-api.vndirect.com.vn/dchart/history', {
 			params: params
 		})
-		.then(function (response) {
-			let ohlcv = response.data;
-			if (!ohlcv || ohlcv['s'] != 'ok') {
-				console.log(response.data);
+			.then(function (response) {
+				let ohlcv = response.data;
+				if (!ohlcv || ohlcv['s'] != 'ok') {
+					console.log(response.data);
+					res.json([]);
+					return;
+				}
+				let ohlcvArr = ohlcv['t'].map((t, idx) => ({
+					symbol: code,
+					dt: (new Date(t * 1000)).toISOString(),
+					open: ohlcv['o'][idx],
+					high: ohlcv['h'][idx],
+					low: ohlcv['l'][idx],
+					close: ohlcv['c'][idx],
+					volume: ohlcv['v'][idx]
+				}));
+				res.json(ohlcvArr);
+			})
+			.catch(function (err) {
+				console.log(err);
 				res.json([]);
-				return;
-			}
-			let ohlcvArr = ohlcv['t'].map((t, idx) => ({
-				symbol: code,
-				dt: (new Date(t*1000)).toISOString(),
-				open: ohlcv['o'][idx],
-				high: ohlcv['h'][idx],
-				low: ohlcv['l'][idx],
-				close: ohlcv['c'][idx],
-				volume: ohlcv['v'][idx]
-			}));
-			res.json(ohlcvArr);
-		})
-		.catch(function (err) {
-			console.log(err);
-			res.json([]);
-		});
+			});
 	},
 	post: (req, res) => {
 		const conn = req.conn;
@@ -197,19 +197,23 @@ module.exports = {
 			if (err) {
 				return console.error('Error acquiring client', err.stack)
 			}
-			client.query(queries.join(';'), [], function (err, results) {
-				client.release();
-				if (err) {
-					console.error(err);
-					error.err_code = err.code;
-					error.err_msg = 'SQL update error';
-					return res.status(400).json(err);
-				}
-				let resObj = {
-					updated: results.rowCount //.filter(result => result.rowCount > 0)?.length
-				}
-				res.json(resObj);
+			queries.forEach(query => {
+				client.query(query, [], function (err, results) {
+					// client.release();
+					if (err) {
+						console.error(err);
+						error.err_code = err.code;
+						error.err_msg = 'SQL update error';
+						return res.status(400).json(err);
+					}
+					console.log(results?.rowCount);
+					// let resObj = {
+					// 	updated: results.rowCount //.filter(result => result.rowCount > 0)?.length
+					// }
+					// res.json(resObj);
+				});
 			});
+			res.status(200).json({});
 		});
 	},
 	delete: (req, res) => {
@@ -232,22 +236,22 @@ module.exports = {
 			let whereCondition = '';
 			whereCondition += '(';
 			if ("stock_id" in id) {
-				whereCondition += format('"stock_id" = %L', id['stock_id']); 
+				whereCondition += format('"stock_id" = %L', id['stock_id']);
 			} else {
 				return '';
 			}
 
 			if ("dt_from" in id) {
-				whereCondition += format(' AND "dt" >= %L', id['dt_from']); 
+				whereCondition += format(' AND "dt" >= %L', id['dt_from']);
 			}
 
 			if ("dt_to" in id) {
-				whereCondition += format(' AND "dt" <= %L', id['dt_to']); 
+				whereCondition += format(' AND "dt" <= %L', id['dt_to']);
 			}
 			whereCondition += ')';
 			return whereCondition;
 		});
-		const whereStm =  'WHERE ' + whereCondtions.filter(condition => condition).join(' OR ');
+		const whereStm = 'WHERE ' + whereCondtions.filter(condition => condition).join(' OR ');
 		const query = `${deleteStm} ${whereStm}`;
 		conn.connect(function (err, client, result) {
 			if (err) {

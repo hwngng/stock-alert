@@ -15,8 +15,13 @@ export default function eveningStar(dataSeries) {
 		let body1 = Math.abs(tradingDay1.close - tradingDay1.open);
 		let body2 = Math.abs(tradingDay2.close - tradingDay2.open);
 		let body3 = Math.abs(tradingDay3.close - tradingDay3.open);
+		let lower1 = common.getLowerBody(tradingDay1);
+		let lower3 = common.getLowerBody(tradingDay3);
+		let minBody = common.getLargeBodyPercent() * 0.5;
 		if (body2 / body1 < 0.2
-			&& body2 / body3 < 0.2)
+			&& body2 / body3 < 0.2
+			&& body1 / lower1 >= minBody
+			&& body3 / lower3 >= minBody)
 			return true;
 		return false;
 	}

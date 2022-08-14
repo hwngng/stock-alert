@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using AlertService.Services.Models;
 using AlertService.Services.Models.Indicator;
 
@@ -6,16 +7,99 @@ namespace AlertService.Services.Common
 {
 	public class CandlePatterns
 	{
-		public static bool IsBearishEngulfingCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		private static decimal getSign(OHLCV candle)
 		{
-			if (tradingDay1.Close <= tradingDay1.Open) return false;
-			if (tradingDay2.Close >= tradingDay2.Open) return false;
-			if (tradingDay1.Close > tradingDay2.Open
-				|| tradingDay1.Open <= tradingDay2.Close)
-				return false;
-			var body1 = Math.Abs(tradingDay1.Close - tradingDay1.Open);
-			var body2 = Math.Abs(tradingDay2.Close - tradingDay2.Open);
-			if (body2 / body1 > 1.3M)
+			return candle.Close - candle.Open;
+		}
+		private static decimal getUpperBody(OHLCV candle)
+		{
+			return getSign(candle) > 0 ? candle.Close : candle.Open;
+		}
+		private static decimal getLowerBody(OHLCV candle)
+		{
+			return getSign(candle) > 0 ? candle.Open : candle.Close;
+		}
+		private static decimal getUpperWick(OHLCV candle)
+		{
+			return candle.High - getUpperBody(candle);
+		}
+		private static decimal getLowerWick(OHLCV candle)
+		{
+			return getLowerBody(candle) - candle.Low;
+		}
+		private static decimal getLargeBodyPercent()
+		{
+			return 0.04M;
+		}
+		private static bool isFollowTrend(OHLCV leftCandle, OHLCV rightCandle, int trend)
+		{
+			return (rightCandle.Close - leftCandle.Close) * trend >= 0;
+		}
+		public static bool IsMatchTrend(List<OHLCV> dataSeries, int window, int expectedTrend, int leftMostCandlePatternIdx)
+		{
+			var preTrendFollow = false;
+			var leftIdx = leftMostCandlePatternIdx - window;
+			if (leftIdx < 0
+				|| !isFollowTrend(dataSeries[leftIdx], dataSeries[leftMostCandlePatternIdx], expectedTrend))
+			{
+				return preTrendFollow;
+			}
+			preTrendFollow = true;
+			return preTrendFollow;
+		}
+
+		public static bool IsBullishCounterAttackCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (getSign(tradingDay1) >= 0) return false;
+			if (getSign(tradingDay2) <= 0) return false;
+			var upper1 = getUpperBody(tradingDay1);
+			var lower1 = getLowerBody(tradingDay1);
+			var upper2 = getUpperBody(tradingDay2);
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = upper1 - lower1;
+			var body2 = upper2 - lower2;
+			var minBody = getLargeBodyPercent() * 0.5M;
+			if ((lower1 > 0 && body1 / lower1 >= minBody)
+				&& Math.Abs(body1 - body2) / Math.Max(body1, body2) < 0.25M
+				&& (Math.Abs(lower1 - upper2) / Math.Min(lower1, upper2) < 0.002M))
+				return true;
+			return false;
+		}
+
+		public static bool IsBearishCounterAttackCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (getSign(tradingDay1) <= 0) return false;
+			if (getSign(tradingDay2) >= 0) return false;
+			var upper1 = getUpperBody(tradingDay1);
+			var lower1 = getLowerBody(tradingDay1);
+			var upper2 = getUpperBody(tradingDay2);
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = upper1 - lower1;
+			var body2 = upper2 - lower2;
+			var minBody = getLargeBodyPercent() * 0.5M;
+			if ((lower1 > 0 && body1 / lower1 >= minBody)
+				&& Math.Abs(body1 - body2) / Math.Max(body1, body2) < 0.25M
+				&& (Math.Abs(upper1 - lower2) / Math.Min(upper1, lower2) < 0.002M))
+				return true;
+			return false;
+		}
+
+		public static bool IsDarkCloudCoverCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (getSign(tradingDay1) <= 0) return false;
+			if (getSign(tradingDay2) >= 0) return false;
+			var upper1 = getUpperBody(tradingDay1);
+			var lower1 = getLowerBody(tradingDay1);
+			var upper2 = getUpperBody(tradingDay2);
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = upper1 - lower1;
+			var body2 = upper2 - lower2;
+			var minBody = getLargeBodyPercent() * 0.6M;
+			if (((lower1 > 0M && body1 / lower1 >= minBody)
+					|| (lower2 > 0M && body2 / lower2 >= minBody))
+				&& upper2 - upper1 >= 0.1M * body2
+				&& lower2 < (upper1 + lower1) / 2M
+				&& lower2 > lower1 + 0.1M * body1)
 				return true;
 			return false;
 		}
@@ -25,11 +109,31 @@ namespace AlertService.Services.Common
 			if (tradingDay1.Close >= tradingDay1.Open) return false;
 			if (tradingDay2.Close <= tradingDay2.Open) return false;
 			if (tradingDay1.Open >= tradingDay2.Close
-				|| tradingDay1.Close < tradingDay2.Open)
+				|| tradingDay1.Close <= tradingDay2.Open)
 				return false;
+			var lower2 = getLowerBody(tradingDay2);
 			var body1 = Math.Abs(tradingDay1.Close - tradingDay1.Open);
 			var body2 = Math.Abs(tradingDay2.Close - tradingDay2.Open);
-			if (body2 / body1 > 1.3M)
+			var minBody = getLargeBodyPercent() * 0.6M;
+			if (body2 / body1 > 1.3M
+				&& (lower2 > 0M && body2 / lower2 > minBody))
+				return true;
+			return false;
+		}
+
+		public static bool IsBearishEngulfingCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (tradingDay1.Close <= tradingDay1.Open) return false;
+			if (tradingDay2.Close >= tradingDay2.Open) return false;
+			if (tradingDay1.Close >= tradingDay2.Open
+				|| tradingDay1.Open <= tradingDay2.Close)
+				return false;
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = Math.Abs(tradingDay1.Close - tradingDay1.Open);
+			var body2 = Math.Abs(tradingDay2.Close - tradingDay2.Open);
+			var minBody = getLargeBodyPercent() * 0.6M;
+			if (body2 / body1 > 1.3M
+				&& (lower2 > 0M && body2 / lower2 > minBody))
 				return true;
 			return false;
 		}
@@ -47,8 +151,13 @@ namespace AlertService.Services.Common
 			var body1 = Math.Abs(tradingDay1.Close - tradingDay1.Open);
 			var body2 = Math.Abs(tradingDay2.Close - tradingDay2.Open);
 			var body3 = Math.Abs(tradingDay3.Close - tradingDay3.Open);
+			var lower1 = getLowerBody(tradingDay1);
+			var lower3 = getLowerBody(tradingDay3);
+			var minBody = getLargeBodyPercent() * 0.5M;
 			if (body2 / body1 < 0.2M
-				&& body2 / body3 < 0.2M)
+				&& body2 / body3 < 0.2M
+				&& body1 / lower1 >= minBody
+				&& body3 / lower3 >= minBody)
 				return true;
 			return false;
 		}
@@ -66,11 +175,15 @@ namespace AlertService.Services.Common
 			var lowerWick = lower - tradingDay.Low;
 			var body = upper - lower;
 			var height = tradingDay.High - tradingDay.Low;
-			if (height <= 0.001M)
+			var minBody = getLargeBodyPercent() * 0.05M;
+			var minWick = getLargeBodyPercent() * 0.5M;
+			if (height == 0)
 				return false;
-			if (body / height > 0.15M &&
+			if ((lower > 0 && body / lower >= minBody) &&
+				body / height > 0.1M &&
 				upperWick / height < 0.05M &&
-				lowerWick >= 2M * body)
+				lowerWick >= 2M * body &&
+				(tradingDay.Low > 0M && height / tradingDay.Low >= minWick))
 				return true;
 
 			return false;
@@ -89,11 +202,15 @@ namespace AlertService.Services.Common
 			var lowerWick = lower - tradingDay.Low;
 			var body = upper - lower;
 			var height = tradingDay.High - tradingDay.Low;
-			if (height <= 0.001M)
+			var minBody = getLargeBodyPercent() * 0.05M;
+			var minWick = getLargeBodyPercent() * 0.5M;
+			if (height == 0)
 				return false;
-			if (body / height > 0.1M &&
+			if ((lower > 0 && body / lower > minBody) &&
+				body / height > 0.1M &&
 				lowerWick / height < 0.05M &&
-				upperWick >= 2M * body)
+				upperWick >= 2M * body &&
+				(tradingDay.Low > 0M && height / tradingDay.Low >= minWick))
 				return true;
 
 			return false;
@@ -112,11 +229,133 @@ namespace AlertService.Services.Common
 			var body1 = Math.Abs(tradingDay1.Close - tradingDay1.Open);
 			var body2 = Math.Abs(tradingDay2.Close - tradingDay2.Open);
 			var body3 = Math.Abs(tradingDay3.Close - tradingDay3.Open);
+			var lower1 = getLowerBody(tradingDay1);
+			var lower3 = getLowerBody(tradingDay3);
+			var minBody = getLargeBodyPercent() * 0.5M;
 			if (body2 / body1 < 0.2M
-				&& body2 / body3 < 0.2M)
+				&& body2 / body3 < 0.2M
+				&& body1 / lower1 >= minBody
+				&& body3 / lower3 >= minBody)
 				return true;
 			return false;
 		}
+
+		public static bool IsBullishHaramiCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (getSign(tradingDay1) >= 0) return false;
+			if (getSign(tradingDay2) < 0) return false;
+			var upper1 = getUpperBody(tradingDay1);
+			var lower1 = getLowerBody(tradingDay1);
+			var upper2 = getUpperBody(tradingDay2);
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = upper1 - lower1;
+			var body2 = upper2 - lower2;
+			var minBody = getLargeBodyPercent() * 0.7M;
+			if ((lower1 > 0 && body1 / lower1 >= minBody)
+				&& body2 < 0.25M * body1
+				&& upper2 < upper1 - body1 * 0.1M
+				&& lower2 > lower1 + body1 * 0.1M)
+				return true;
+			return false;
+		}
+
+		public static bool IsBearishHaramiCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (getSign(tradingDay1) <= 0) return false;
+			if (getSign(tradingDay2) > 0) return false;
+			var upper1 = getUpperBody(tradingDay1);
+			var lower1 = getLowerBody(tradingDay1);
+			var upper2 = getUpperBody(tradingDay2);
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = upper1 - lower1;
+			var body2 = upper2 - lower2;
+			var minBody = getLargeBodyPercent() * 0.7M;
+			if ((lower1 > 0 && body1 / lower1 >= minBody)
+				&& body2 < 0.25M * body1
+				&& upper2 < upper1 - body1 * 0.1M
+				&& lower2 > lower1 + body1 * 0.1M)
+				return true;
+			return false;
+		}
+
+		public static bool IsWhiteMarubozu(OHLCV tradingDay)
+		{
+			if (getSign(tradingDay) <= 0)
+				return false;
+			var upperWick = getUpperWick(tradingDay);
+			var lowerWick = getLowerWick(tradingDay);
+			var upper = getUpperBody(tradingDay);
+			var lower = getLowerBody(tradingDay);
+			var body = upper - lower;
+			if (lower > 0
+				&& upperWick / lower < 0.0001M
+				&& lowerWick / lower < 0.0001M
+				&& body / lower >= getLargeBodyPercent())
+				return true;
+
+			return false;
+		}
+
+		public static bool IsBlackMarubozu(OHLCV tradingDay)
+		{
+			if (getSign(tradingDay) >= 0)
+				return false;
+			var upperWick = getUpperWick(tradingDay);
+			var lowerWick = getLowerWick(tradingDay);
+			var upper = getUpperBody(tradingDay);
+			var lower = getLowerBody(tradingDay);
+			var body = upper - lower;
+			if (lower > 0
+				&& upperWick / lower < 0.0001M
+				&& lowerWick / lower < 0.0001M
+				&& body / lower >= getLargeBodyPercent())
+				return true;
+
+			return false;
+		}
+
+		public static bool IsOnNeckCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (getSign(tradingDay1) >= 0) return false;
+			if (getSign(tradingDay2) <= 0) return false;
+			var upper1 = getUpperBody(tradingDay1);
+			var lower1 = getLowerBody(tradingDay1);
+			var upper2 = getUpperBody(tradingDay2);
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = upper1 - lower1;
+			var body2 = upper2 - lower2;
+			var minBody = getLargeBodyPercent() * 0.6M;
+			var smallBodyMin = getLargeBodyPercent() * 0.1M;
+			var smallBodyMax = getLargeBodyPercent() * 0.25M;
+			if ((lower1 > 0 && body1 / lower1 >= minBody)
+				&& (lower2 > 0 && body2 / lower2 >= smallBodyMin && body2 / lower2 <= smallBodyMax)
+				&& (Math.Abs(lower1 - upper2) / Math.Min(lower1, upper2) < 0.002M))
+				return true;
+			return false;
+		}
+
+		public static bool IsPiercingCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (getSign(tradingDay1) >= 0) return false;
+			if (getSign(tradingDay2) <= 0) return false;
+			var upper1 = getUpperBody(tradingDay1);
+			var lower1 = getLowerBody(tradingDay1);
+			var upper2 = getUpperBody(tradingDay2);
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = upper1 - lower1;
+			var body2 = upper2 - lower2;
+			var minBody = getLargeBodyPercent() * 0.6M;
+			if (((lower1 > 0 && body1 / lower1 >= minBody)
+					|| (lower2 > 0 && body2 / lower2 >= minBody))
+				&& lower1 - lower2 >= 0.15M * body2
+				&& upper2 > (upper1 + lower1) / 2M
+				&& upper2 < lower1 + 0.8M * body1
+				&& body1 > 0
+				&& Math.Abs(body1 - body2) / body1 < 0.3M)
+				return true;
+			return false;
+		}
+
 
 		public static bool IsThreeBlackCrowsCandles(OHLCV tradingDay1, OHLCV tradingDay2, OHLCV tradingDay3)
 		{
@@ -125,16 +364,24 @@ namespace AlertService.Services.Common
 			if (tradingDay3.Close >= tradingDay3.Open) return false;
 			var lowerWick2 = tradingDay2.Close - tradingDay2.Low;
 			var lowerWick3 = tradingDay3.Close - tradingDay2.Low;
+			var body1 = Math.Abs(tradingDay1.Close - tradingDay1.Open);
 			var body2 = Math.Abs(tradingDay2.Close - tradingDay2.Open);
 			var body3 = Math.Abs(tradingDay3.Close - tradingDay3.Open);
+			var lower1 = getLowerBody(tradingDay1);
+			var lower2 = getLowerBody(tradingDay2);
+			var lower3 = getLowerBody(tradingDay3);
+			var minBody = getLargeBodyPercent() * 0.4M;
 			if (((tradingDay1.Open + tradingDay1.Close) / 2M >= tradingDay2.Open
-					&& tradingDay1.Close <= tradingDay2.Open
-					&& tradingDay1.Close > tradingDay2.Close
-					&& lowerWick2 / body2 < 0.5M)
+				&& tradingDay1.Close <= tradingDay2.Open
+				&& tradingDay1.Close > tradingDay2.Close
+				&& lowerWick2 / body2 < 0.5M)
 				&& ((tradingDay2.Open + tradingDay2.Close) / 2M >= tradingDay3.Open
 					&& tradingDay2.Close <= tradingDay3.Open
 					&& tradingDay2.Close > tradingDay3.Close
-					&& lowerWick3 / body3 < 0.5M))
+					&& lowerWick3 / body3 < 0.5M)
+				&& body1 / lower1 > minBody
+				&& body2 / lower2 > minBody
+				&& body3 / lower3 > minBody)
 				return true;
 			return false;
 		}
@@ -146,16 +393,64 @@ namespace AlertService.Services.Common
 			if (tradingDay3.Close <= tradingDay3.Open) return false;
 			var upperWick2 = tradingDay2.High - tradingDay2.Close;
 			var upperWick3 = tradingDay3.High - tradingDay3.Close;
+			var body1 = Math.Abs(tradingDay1.Close - tradingDay1.Open);
 			var body2 = Math.Abs(tradingDay2.Close - tradingDay2.Open);
 			var body3 = Math.Abs(tradingDay3.Close - tradingDay3.Open);
+			var lower1 = getLowerBody(tradingDay1);
+			var lower2 = getLowerBody(tradingDay2);
+			var lower3 = getLowerBody(tradingDay3);
+			var minBody = getLargeBodyPercent() * 0.4M;
 			if (((tradingDay1.Open + tradingDay1.Close) / 2M <= tradingDay2.Open
-					&& tradingDay1.Close >= tradingDay2.Open
-					&& tradingDay1.Close < tradingDay2.Close
-					&& upperWick2 / body2 < 0.5M)
+				&& tradingDay1.Close >= tradingDay2.Open
+				&& tradingDay1.Close < tradingDay2.Close
+				&& upperWick2 / body2 < 0.5M)
 				&& ((tradingDay2.Open + tradingDay2.Close) / 2M <= tradingDay3.Open
 					&& tradingDay2.Close >= tradingDay3.Open
 					&& tradingDay2.Close < tradingDay3.Close
-					&& upperWick3 / body3 < 0.5M))
+					&& upperWick3 / body3 < 0.5M)
+				&& body1 / lower1 > minBody
+				&& body2 / lower2 > minBody
+				&& body3 / lower3 > minBody)
+				return true;
+			return false;
+		}
+
+		public static bool IsTweezerTopCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (getSign(tradingDay1) <= 0) return false;
+			if (getSign(tradingDay2) >= 0) return false;
+			var upper1 = getUpperBody(tradingDay1);
+			var lower1 = getLowerBody(tradingDay1);
+			var upper2 = getUpperBody(tradingDay2);
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = upper1 - lower1;
+			var body2 = upper2 - lower2;
+			var minBody = getLargeBodyPercent() * 0.6M;
+			if ((lower1 > 0 && body1 / lower1 >= minBody)
+				&& (lower2 > 0 && body2 / lower2 >= minBody)
+				&& Math.Abs(body1 - body2) / Math.Max(body1, body2) < 0.3M
+				&& (Math.Abs(tradingDay1.High - tradingDay2.High) / Math.Min(tradingDay1.High, tradingDay2.High) < 0.008M
+					|| (Math.Abs(upper1 - upper2) / Math.Min(upper1, upper2) < 0.008M)))
+				return true;
+			return false;
+		}
+
+		public static bool IsTweezerBottomCandles(OHLCV tradingDay1, OHLCV tradingDay2)
+		{
+			if (getSign(tradingDay1) >= 0) return false;
+			if (getSign(tradingDay2) <= 0) return false;
+			var upper1 = getUpperBody(tradingDay1);
+			var lower1 = getLowerBody(tradingDay1);
+			var upper2 = getUpperBody(tradingDay2);
+			var lower2 = getLowerBody(tradingDay2);
+			var body1 = upper1 - lower1;
+			var body2 = upper2 - lower2;
+			var minBody = getLargeBodyPercent() * 0.6M;
+			if ((lower1 > 0 && body1 / lower1 >= minBody)
+				&& (lower2 > 0 && body2 / lower2 >= minBody)
+				&& Math.Abs(body1 - body2) / Math.Max(body1, body2) < 0.3M
+				&& (Math.Abs(tradingDay1.Low - tradingDay2.Low) / Math.Min(tradingDay1.Low, tradingDay2.Low) < 0.008M
+					|| (Math.Abs(lower1 - lower2) / Math.Min(lower1, lower2) < 0.008M)))
 				return true;
 			return false;
 		}
@@ -219,7 +514,7 @@ namespace AlertService.Services.Common
 				&& ((smaInd.Points[i - 1].Value <= smaInd.Points[i].Value)
 					|| (smaInd.Points[i - 1].Value > smaInd.Points[i].Value
 						&& smaInd.Points[i - 1].Value <= (1 + fluc) * smaInd.Points[dip].Value)
-					|| (smaInd.Points[i-1].Value < maxPeakDip*cwh.RightHigh.Value))
+					|| (smaInd.Points[i - 1].Value < maxPeakDip * cwh.RightHigh.Value))
 			)
 			{
 				if (smaInd.Points[i - 1].Value <= smaInd.Points[dip].Value)

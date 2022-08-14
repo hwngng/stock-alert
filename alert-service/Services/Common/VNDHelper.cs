@@ -152,6 +152,7 @@ namespace AlertService.Services.Common
 				"ProjectOpen",
 				"TotalRoom",
 				"CurrentRoom",
+				"Nav",
 				"OpenPrice"
 			};
 			_fieldLocatorDict["SMA"]["S"] = _fieldLocatorDict["SMA"]["ST"] = FlipIndexValueList<string>(_fieldLocator["SMA"]["S"]);
@@ -273,8 +274,10 @@ namespace AlertService.Services.Common
 				if (prop is null)
 				{
 					prop = typeObj.BaseType.GetProperty(propName);
-					if (prop is null)
-						throw new ArgumentException();
+					if (prop is null) {
+						// throw new ArgumentException();
+						continue;
+					}
 				}
 				prop.SetValue(msgObj, GetValueObject(msgArr[i + 1], prop));
 			}

@@ -44,11 +44,11 @@ namespace AlertService.Services.Impls
 
 		public override async Task<List<Alert>> ProcessMessage(SocketMessage msg)
 		{
+			if (msg?.Message?.MessageType != MessageType.SMA)
+				return null;
+			var msgJson = JsonSerializer.Serialize(Convert.ChangeType(msg.Message, msg.Message.GetType()));
 			try
 			{
-				if (msg?.Message?.MessageType != MessageType.SMA)
-					return null;
-				var msgJson = JsonSerializer.Serialize(Convert.ChangeType(msg.Message, msg.Message.GetType()));
 				var sma = JsonSerializer.Deserialize<SMAGeneral>(msgJson, _parseOptions);
 				if (!sma.MatchPrice.HasValue)
 				{
@@ -74,7 +74,7 @@ namespace AlertService.Services.Impls
 				addAlertIfNotNull(alerts, SMA(stockData, sma, 45, msg.Timestamp));
 				addAlertIfNotNull(alerts, RSI(stockData, sma, 14, msg.Timestamp));
 
-				Console.WriteLine("TechAlert: Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
+				// Console.WriteLine("TechAlert: Symbol: {0}, Alert: {1}", sma.Symbol, JsonSerializer.Serialize(alerts));
 				if (alerts.Count > 0)
 				{
 					// await _alertPublisher.SendAlerts(alerts);
@@ -84,7 +84,7 @@ namespace AlertService.Services.Impls
 			}
 			catch (Exception e)
 			{
-				_logger.LogError(e, "Error ");
+				_logger.LogError(e, $"Error message: {msgJson}");
 			}
 
 			return null;
@@ -96,11 +96,10 @@ namespace AlertService.Services.Impls
 
 			var lastPeriod = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, period);
 			var smaIndicator = Indicator.GetSMA(lastPeriod, period);
+			var currentIndicator = smaIndicator.Points.LastOrDefault();
 			switch (period)
 			{
 				case 10:
-				case 45:
-					var currentIndicator = smaIndicator.Points.LastOrDefault();
 					if (sma.MatchPrice > currentIndicator?.Value)
 					{
 						alert = CreateAlert(AlertTypeConstant.MA10Above,
@@ -120,6 +119,26 @@ namespace AlertService.Services.Impls
 											msgTimestamp);
 					}
 					break;
+				case 45:
+					if (sma.MatchPrice > currentIndicator?.Value)
+					{
+						alert = CreateAlert(AlertTypeConstant.MA45Above,
+											stockData.Symbol,
+											string.Format(AlertMessageFormat.MA, "lên", period),
+											stockData.ExchangeCode,
+											null,
+											msgTimestamp);
+					}
+					else if (sma.MatchPrice < currentIndicator?.Value)
+					{
+						alert = CreateAlert(AlertTypeConstant.MA45Above,
+											stockData.Symbol,
+											string.Format(AlertMessageFormat.MA, "xuống", period),
+											stockData.ExchangeCode,
+											null,
+											msgTimestamp);
+					}
+					break;
 			}
 
 			return alert;
@@ -128,11 +147,13 @@ namespace AlertService.Services.Impls
 		public Alert RSI(Stock stockData, SMAGeneral sma, int period, long msgTimestamp)
 		{
 			Alert alert = null;
-
-			var lastPeriod = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, period + 2);
+			var lastPeriod = Utils.GetLastNTradingDay(stockData.HistoricalPrice, sma, period + 20);
 			var rsiIndicator = Indicator.GetRSI(lastPeriod, period);
 			if (rsiIndicator.Points.Count < 2)
 				return alert;
+			// if (stockData.Symbol == "HHV") {
+			// 	_logger.LogInformation("RSI HHV: ", rsiIndicator);
+			// }
 			switch (period)
 			{
 				case 14:
@@ -149,7 +170,7 @@ namespace AlertService.Services.Impls
 					}
 					else if (currentPoint.Value < 70 && prevPoint.Value > 70)
 					{
-						alert = CreateAlert(AlertTypeConstant.RSI14InOverBuy,
+						alert = CreateAlert(AlertTypeConstant.RSI14OutOverBuy,
 											stockData.Symbol,
 											string.Format(AlertMessageFormat.RSI, period, "đi ra", "mua"),
 											stockData.ExchangeCode,
@@ -158,7 +179,7 @@ namespace AlertService.Services.Impls
 					}
 					else if (currentPoint.Value < 30 && prevPoint.Value > 30)
 					{
-						alert = CreateAlert(AlertTypeConstant.RSI14InOverBuy,
+						alert = CreateAlert(AlertTypeConstant.RSI14InOverSell,
 											stockData.Symbol,
 											string.Format(AlertMessageFormat.RSI, period, "đi vào", "bán"),
 											stockData.ExchangeCode,
@@ -167,7 +188,7 @@ namespace AlertService.Services.Impls
 					}
 					else if (currentPoint.Value > 30 && prevPoint.Value < 30)
 					{
-						alert = CreateAlert(AlertTypeConstant.RSI14InOverBuy,
+						alert = CreateAlert(AlertTypeConstant.RSI14OutOverSell,
 											stockData.Symbol,
 											string.Format(AlertMessageFormat.RSI, period, "đi ra", "bán"),
 											stockData.ExchangeCode,

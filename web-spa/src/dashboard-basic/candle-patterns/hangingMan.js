@@ -20,7 +20,7 @@ export default function hangingManCandle(dataSeries) {
 		if (height == 0)
 			return false;
 		if ((lower > 0 && body / lower >= minBody) &&
-			body / height > 0.15 &&
+			body / height > 0.1 &&
 			upperWick / height < 0.05 &&
 			lowerWick >= 2 * body &&
 			(tradingDay.low > 0 && height / tradingDay.low >= minWick))

@@ -160,6 +160,7 @@ export default class StockTicker extends Component {
             "ProjectOpen",
             "TotalRoom",
             "CurrentRoom",
+            "Nav",
             "OpenPrice"
         ];
         this.format["SBA"] = {};
@@ -326,7 +327,7 @@ export default class StockTicker extends Component {
 
     loadVersion() {
         this.versions = {}
-        this.versions['stockInfo'] = '1654185264';
+        this.versions['stockInfo'] = Date();
     }
 
     makeSearchHint(stockInfos) {
@@ -1044,6 +1045,7 @@ export default class StockTicker extends Component {
                                 <th className="sortable" onClick={e => this.onSortChange(e, "Symbol")}>Mã</th>
                                 <th className="sortable" onClick={e => this.onSortChange(e, "MatchPrice")}>Giá hiện tại</th>
                                 <th className="sortable" onClick={e => this.onSortChange(e, "RefPrice")}>Giá TC</th>
+                                {/* <th className="sortable" onClick={e => this.onSortChange(e, "OpenPrice")}>Giá mở</th> */}
                                 <th className="sortable" onClick={e => this.onSortChange(e, "PercentChange")}>+/-</th>
                                 <th className="sortable" onClick={e => this.onSortChange(e, "AccumulatedVal")}>Tổng GT (Tỷ VND)</th>
                                 <th className="sortable" onClick={e => this.onSortChange(e, "DayHigh")}>Cao</th>
@@ -1055,6 +1057,7 @@ export default class StockTicker extends Component {
                         </thead>
                         <tbody>
                             {stockObjs.map(s => {
+                                // console.log(s);
                                 s.Change = this.calcChange(s.MatchPrice, s.RefPrice);
                                 s.PercentChange = this.calcPercentChange(s.MatchPrice, s.RefPrice);
                                 s.PriceTrendClass = this.getPriceTrendClass(s.MatchPrice, s.RefPrice);
@@ -1093,6 +1096,7 @@ export default class StockTicker extends Component {
                                         </td>
                                         <td className={'match-price ' + s.PriceTrendClass}>{this.formatFloat(s.MatchPrice, 2, true)}</td>
                                         <td className="price-nochange">{this.formatFloat(s.RefPrice, 2, true)}</td>
+                                        {/* <td className={'day-open ' + this.getPriceTrendClass(s.OpenPrice, s.RefPrice)}>{this.formatFloat(s.OpenPrice, 2, true)}</td> */}
                                         <td className={'price-change ' + s.PriceTrendClass}>{this.formatFloatWithSign(Math.round(s.Change * 100) / 100, 2)} / {this.formatFloatWithSign(Math.round(s.PercentChange * 10) / 10, 1)}%</td>
                                         <td className={'accumulated-val'}>{this.formatFloat(s.AccumulatedVal, 2)}</td>
                                         <td className={'day-high ' + this.getPriceTrendClass(s.DayHigh, s.RefPrice)}>{this.formatFloat(s.DayHigh, 2, true)}</td>

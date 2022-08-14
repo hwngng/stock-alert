@@ -14,6 +14,7 @@ import {
 	CandlestickSeriesHighlightCandle,
 	LineSeries,
 	StochasticSeries,
+	RSISeries
 } from "../../../react-stockcharts/lib/series";
 import { XAxis, YAxis } from "../../../react-stockcharts/lib/axes";
 import {
@@ -31,9 +32,10 @@ import {
 	BollingerBandTooltip,
 	StochasticTooltip,
 	GroupTooltip,
-	HoverTooltip
+	HoverTooltip,
+	RSITooltip
 } from "../../../react-stockcharts/lib/tooltip";
-import { sma, stochasticOscillator, bollingerBand } from "../../../react-stockcharts/lib/indicator";
+import { sma, stochasticOscillator, bollingerBand, rsi } from "../../../react-stockcharts/lib/indicator";
 import { fitWidth, fitDimensions } from "../../../react-stockcharts/lib/helper";
 import { last } from "../../../react-stockcharts/lib/utils";
 import { LabelAnnotation, Label, Annotate } from "../../../react-stockcharts/lib/annotation";
@@ -214,8 +216,9 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 	render() {
 		const that = this;
 		const totalHeight = 680;
-		const priceHeight = 580;
-		const volHeight = totalHeight - priceHeight;
+		const priceHeight = 480;
+		const volHeight = 100;
+		const rsiHeight = 100
 		const { type, data: initialData, width, ratio, highlightPatterns, code, highlightOptions, focusPattern } = this.props;
 		let { mouseMoveEvent, panEvent, zoomEvent, zoomAnchor, clamp } = this.props;
 		const margin = { left: 50, right: 70, top: 50, bottom: 20 };
@@ -239,6 +242,11 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 			.merge((d, c) => { d.sma45 = c; })
 			.accessor(d => d.sma45);
 
+		const rsi14 = rsi()
+			.options({ windowSize: 14 })
+			.merge((d, c) => { d.rsi = c; })
+			.accessor(d => d.rsi);
+
 		// const ema50 = ema()
 		// 	.id(2)
 		// 	.options({ windowSize: 50 })
@@ -250,7 +258,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 		// 	.accessor(d => d.bb);
 
 
-		const calculatedData = sma10(sma45(initialData));
+		const calculatedData = rsi14(sma10(sma45(initialData)));
 		const xScaleProvider = discontinuousTimeScaleProvider
 			.inputDateAccessor(d => d.date);
 		const {
@@ -498,7 +506,7 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 				</Chart>
 				<Chart id={2}
 					yExtents={d => d.volume}
-					height={volHeight} origin={(w, h) => [0, h - 130]}
+					height={volHeight} origin={(w, h) => [0, h - 230]}
 				>
 					<YAxis axisAt="left" orient="left" ticks={5} tickFormat={format(".2s")}
 						zoomEnabled={zoomEvent} stroke="#000000" />
@@ -516,6 +524,25 @@ class CandleStickChartHighlightCandle extends React.PureComponent {
 						yAccessor={d => d.volume}
 						fill={d => d.close > d.open ? "#6BA583" : "#DB0000"}
 						opacity={0.7} />
+				</Chart>
+				<Chart id={3}
+					yExtents={[0, 100]}
+					height={rsiHeight} origin={(w, h) => [0, h - 130]}
+				>
+					<XAxis axisAt="bottom" orient="bottom" showTicks={false} outerTickSize={0} />
+					<YAxis axisAt="right"
+						orient="right"
+						tickValues={[30, 50, 70]} />
+					<MouseCoordinateY
+						at="right"
+						orient="right"
+						displayFormat={format(".2f")} />
+
+					<RSISeries yAccessor={d => d.rsi} />
+
+					<RSITooltip origin={[-38, 15]}
+						yAccessor={d => d.rsi}
+						options={rsi14.options()} />
 				</Chart>
 				<CrossHairCursor />
 			</ChartCanvas>

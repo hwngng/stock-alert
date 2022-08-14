@@ -52,7 +52,7 @@ namespace AlertService.Services.Hubs
 				}
 			}
 			aggAlerts = aggAlerts.GroupBy(x => new { x.Type, x.Symbol, x.Exchange }).Select(g => g.First()).ToList();
-			Console.WriteLine("aggAlerts: " + JsonSerializer.Serialize(aggAlerts));
+			// Console.WriteLine("aggAlerts: " + JsonSerializer.Serialize(aggAlerts));
 			await Task.Run(() => _alertPublisher.SendAlerts(aggAlerts, context));
 		}
 
